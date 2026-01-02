@@ -47,7 +47,7 @@ export default function PasswordGeneratorPage() {
     const shuffled = [...array]
     for (let i = shuffled.length - 1; i > 0; i--) {
       const j = getSecureRandomInt(i + 1)
-      ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+        ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
     }
     return shuffled
   }
@@ -243,26 +243,6 @@ export default function PasswordGeneratorPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="username" className="text-sm font-medium text-foreground">
-                Username <span className="text-muted-foreground text-xs">(optional)</span>
-              </Label>
-              <Input
-                id="username"
-                type="text"
-                placeholder="johndoe"
-                value={username}
-                onChange={(e) => {
-                  setUsername(e.target.value)
-                  if (formErrors.username) {
-                    setFormErrors((prev) => ({ ...prev, username: undefined }))
-                  }
-                }}
-                className="bg-input border-border text-foreground placeholder:text-muted-foreground focus:ring-primary focus:border-primary"
-              />
-              {formErrors.username && <p className="text-xs text-destructive">{formErrors.username}</p>}
-            </div>
-
-            <div className="space-y-2">
               <Label htmlFor="email" className="text-sm font-medium text-foreground">
                 Email
               </Label>
@@ -282,6 +262,26 @@ export default function PasswordGeneratorPage() {
               />
               {formErrors.email && <p className="text-xs text-destructive">{formErrors.email}</p>}
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="username" className="text-sm font-medium text-foreground">
+              Username <span className="text-muted-foreground text-xs">(optional)</span>
+            </Label>
+            <Input
+              id="username"
+              type="text"
+              placeholder="johndoe"
+              value={username}
+              onChange={(e) => {
+                setUsername(e.target.value)
+                if (formErrors.username) {
+                  setFormErrors((prev) => ({ ...prev, username: undefined }))
+                }
+              }}
+              className="bg-input border-border text-foreground placeholder:text-muted-foreground focus:ring-primary focus:border-primary"
+            />
+            {formErrors.username && <p className="text-xs text-destructive">{formErrors.username}</p>}
           </div>
 
           {/* Password Settings Section */}
