@@ -5,7 +5,7 @@ import { useEffect } from "react"
 
 export default function HomePage() {
   useEffect(() => {
-    redirect("/accounts")
+    redirect("/login")
   }, [])
 
   return null

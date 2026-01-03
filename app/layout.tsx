@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { Lato } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
+import AuthProvider  from "@/components/AuthProvider"
 
 const lato = Lato({
   weight: ["400", "700", "900"],
@@ -11,7 +12,7 @@ const lato = Lato({
 })
 
 export const metadata: Metadata = {
-  title: "Passwuts",
+  title: "Password Generator - Passwuts",
   description: "Generate and store secure passwords",
   generator: "v0.app",
   icons: {
@@ -41,7 +42,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${lato.variable} font-sans antialiased`}>
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
         <Analytics />
       </body>
     </html>

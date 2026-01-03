@@ -6,6 +6,7 @@ import { PasswordGeneratorModal } from "@/components/password-generator-modal"
 import { Button } from "@/components/ui/button"
 import { Copy, Eye, EyeOff, ChevronDown, Star, MoreVertical, Check } from "lucide-react"
 import { Card } from "@/components/ui/card"
+import { ClientGuard } from "@/components/ClientGuard"
 
 // Mock data for accounts
 const mockAccounts = [
@@ -120,95 +121,62 @@ export default function AccountsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header title="Accounts" onAddClick={() => setIsModalOpen(true)} />
+    <ClientGuard>
+      <div className="min-h-screen bg-background">
+        <Header title="Accounts" onAddClick={() => setIsModalOpen(true)} />
 
-      <div className="px-4 sm:px-6 py-6 max-w-[1800px] mx-auto">
-        {/* Filter Section */}
-        <div className="mb-6">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm text-foreground">Show:</span>
-            <Button variant="ghost" className="text-foreground hover:bg-secondary gap-1 h-8 px-3">
-              All categories
-              <ChevronDown className="h-4 w-4" />
-            </Button>
+        <div className="px-4 sm:px-6 py-6 max-w-[1800px] mx-auto">
+          {/* Filter Section */}
+          <div className="mb-6">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm text-foreground">Show:</span>
+              <Button variant="ghost" className="text-foreground hover:bg-secondary gap-1 h-8 px-3">
+                All categories
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
-        </div>
 
-        {/* Accounts Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
-          {mockAccounts.map((account) => (
-            <Card key={account.id} className="bg-card border-border p-4 sm:p-5 hover:bg-card/80 transition-colors">
-              <div className="space-y-4">
-                {/* Header with name and actions */}
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <h3 className="font-semibold text-foreground text-sm break-words">{account.name}</h3>
-                    <p className="text-xs text-muted-foreground break-all">{account.url}</p>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary"
-                    >
-                      <Star className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary"
-                    >
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Username */}
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between bg-secondary/50 rounded px-3 py-2 gap-2">
-                    <span className="text-sm text-foreground font-mono break-all">{account.username}</span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 text-muted-foreground hover:text-foreground shrink-0"
-                      onClick={() => copyToClipboard(account.username, `username-${account.id}`)}
-                    >
-                      {copiedItem === `username-${account.id}` ? (
-                        <Check className="h-3 w-3 text-primary" />
-                      ) : (
-                        <Copy className="h-3 w-3" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Password */}
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between bg-secondary/50 rounded px-3 py-2 gap-2">
-                    <span className="text-sm text-foreground font-mono break-all">
-                      {visiblePasswords.has(account.id) ? account.password : "••••••••"}
-                    </span>
+          {/* Accounts Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
+            {mockAccounts.map((account) => (
+              <Card key={account.id} className="bg-card border-border p-4 sm:p-5 hover:bg-card/80 transition-colors">
+                <div className="space-y-4">
+                  {/* Header with name and actions */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <h3 className="font-semibold text-foreground text-sm break-words">{account.name}</h3>
+                      <p className="text-xs text-muted-foreground break-all">{account.url}</p>
+                    </div>
                     <div className="flex items-center gap-1 shrink-0">
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                        onClick={() => togglePasswordVisibility(account.id)}
+                        className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary"
                       >
-                        {visiblePasswords.has(account.id) ? (
-                          <EyeOff className="h-3 w-3" />
-                        ) : (
-                          <Eye className="h-3 w-3" />
-                        )}
+                        <Star className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                        onClick={() => copyToClipboard(account.password, `password-${account.id}`)}
+                        className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary"
                       >
-                        {copiedItem === `password-${account.id}` ? (
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Username */}
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between bg-secondary/50 rounded px-3 py-2 gap-2">
+                      <span className="text-sm text-foreground font-mono break-all">{account.username}</span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-muted-foreground hover:text-foreground shrink-0"
+                        onClick={() => copyToClipboard(account.username, `username-${account.id}`)}
+                      >
+                        {copiedItem === `username-${account.id}` ? (
                           <Check className="h-3 w-3 text-primary" />
                         ) : (
                           <Copy className="h-3 w-3" />
@@ -216,36 +184,71 @@ export default function AccountsPage() {
                       </Button>
                     </div>
                   </div>
-                </div>
 
-                {/* Warning Message */}
-                {account.hasWarning && (
-                  <div className="flex items-center gap-2 text-destructive text-xs">
-                    <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                      />
-                    </svg>
-                    <span className="break-words">Passwords require your attention</span>
+                  {/* Password */}
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between bg-secondary/50 rounded px-3 py-2 gap-2">
+                      <span className="text-sm text-foreground font-mono break-all">
+                        {visiblePasswords.has(account.id) ? account.password : "••••••••"}
+                      </span>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                          onClick={() => togglePasswordVisibility(account.id)}
+                        >
+                          {visiblePasswords.has(account.id) ? (
+                            <EyeOff className="h-3 w-3" />
+                          ) : (
+                            <Eye className="h-3 w-3" />
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                          onClick={() => copyToClipboard(account.password, `password-${account.id}`)}
+                        >
+                          {copiedItem === `password-${account.id}` ? (
+                            <Check className="h-3 w-3 text-primary" />
+                          ) : (
+                            <Copy className="h-3 w-3" />
+                          )}
+                        </Button>
+                      </div>
+                    </div>
                   </div>
-                )}
 
-                {/* Open in Browser Button */}
-                <Button variant="ghost" className="w-full justify-between text-foreground hover:bg-secondary">
-                  <span className="text-sm">Open in browser</span>
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
-              </div>
-            </Card>
-          ))}
+                  {/* Warning Message */}
+                  {account.hasWarning && (
+                    <div className="flex items-center gap-2 text-destructive text-xs">
+                      <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                        />
+                      </svg>
+                      <span className="break-words">Passwords require your attention</span>
+                    </div>
+                  )}
+
+                  {/* Open in Browser Button */}
+                  <Button variant="ghost" className="w-full justify-between text-foreground hover:bg-secondary">
+                    <span className="text-sm">Open in browser</span>
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </div>
+              </Card>
+            ))}
+          </div>
         </div>
-      </div>
 
-      {/* Password Generator Modal */}
-      <PasswordGeneratorModal open={isModalOpen} onOpenChange={setIsModalOpen} />
-    </div>
+        {/* Password Generator Modal */}
+        <PasswordGeneratorModal open={isModalOpen} onOpenChange={setIsModalOpen} />
+      </div>
+    </ClientGuard>
   )
 }
