@@ -2,7 +2,16 @@
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Plus, Settings } from "lucide-react"
+import { Plus, Settings, LogOut, User } from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { useRouter } from "next/navigation"
 
 interface HeaderProps {
   title: string
@@ -11,6 +20,23 @@ interface HeaderProps {
 }
 
 export function Header({ title, onAddClick, showAddButton = true }: HeaderProps) {
+  const router = useRouter()
+
+  const handleLogout = async () => {
+
+    try {
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+      });
+
+      if (response.ok) {
+        router.push("/login");
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  }
+
   return (
     <div className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="flex items-center justify-between gap-2 sm:gap-4 px-4 sm:px-6 py-4">
@@ -50,21 +76,42 @@ export function Header({ title, onAddClick, showAddButton = true }: HeaderProps)
           </div>
         </div>
 
-        {/* Right section - Settings and Profile */}
+        {/* Right section - Profile */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-muted-foreground hover:text-foreground hover:bg-secondary h-8 w-8 sm:h-10 sm:w-10"
-          >
-            <Settings className="h-4 w-4 sm:h-5 sm:w-5" />
-          </Button>
-
-          <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-primary overflow-hidden">
-            <div className="h-full w-full flex items-center justify-center text-primary-foreground font-semibold text-sm">
-              U
-            </div>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className="h-8 w-8 sm:h-9 sm:w-9 rounded-full p-0 overflow-hidden ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                <div className="h-full w-full bg-primary flex items-center justify-center text-primary-foreground font-semibold text-sm">
+                  U
+                </div>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-56" align="end" forceMount>
+              <DropdownMenuLabel className="font-normal">
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm font-medium leading-none">User</p>
+                  <p className="text-xs leading-none text-muted-foreground">user@example.com</p>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                <User className="mr-2 h-4 w-4" />
+                <span>Profile</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Settings className="mr-2 h-4 w-4" />
+                <span>Settings</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Log out</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </div>

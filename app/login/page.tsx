@@ -5,11 +5,22 @@ import { Button } from "@/components/ui/button"
 import { useRouter } from 'next/navigation'
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import auth from "@/lib/Firebase/initialize";
+import { useAuthStore } from "@/store/authStore";
+import { useEffect } from "react";
 
 const provider = new GoogleAuthProvider();
 
 export default function LoginPage() {
   const router = useRouter();
+  const { user, loading } = useAuthStore();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (!loading && user) {
+      router.push('/accounts');
+    }
+  }, [loading, user, router]);
+
   const handleGoogleLogin = async () => {
     try {
         const result  = await signInWithPopup(auth, provider);
