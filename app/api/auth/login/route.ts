@@ -1,23 +1,30 @@
 import { NextResponse } from 'next/server'
 import { adminAuth } from '@/lib/firebaseAdmin'
 
+const SESSION_EXPIRES_IN = 1000 * 60 * 60 * 24 * 7 // 7 days
+
 export async function POST(req: Request) {
   const { idToken } = await req.json()
 
-  try {
-    const decodedToken = await adminAuth.verifyIdToken(idToken)
+  // 1. Verify short-lived ID token
+  await adminAuth.verifyIdToken(idToken)
 
-    const response = NextResponse.json({ success: true })
-    
-    response.cookies.set('session', idToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'strict',
-      path: '/',
-    })
+  // 2. Create LONG-LIVED session cookie
+  const sessionCookie = await adminAuth.createSessionCookie(
+    idToken,
+    { expiresIn: SESSION_EXPIRES_IN }
+  )
 
-    return response
-  } catch {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const res = NextResponse.json({ success: true })
+
+  // 3. Store session cookie (NOT ID token)
+  res.cookies.set('session', sessionCookie, {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'strict',
+    path: '/',
+    maxAge: SESSION_EXPIRES_IN / 1000,
+  })
+
+  return res
 }

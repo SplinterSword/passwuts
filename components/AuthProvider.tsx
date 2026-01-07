@@ -5,6 +5,7 @@ import { useAuthStore } from '@/store/authStore'
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
   const setUser = useAuthStore((s : any) => s.setUser)
+  const user = useAuthStore((s : any) => s.user)
 
   useEffect(() => {
     fetch('/api/me')
