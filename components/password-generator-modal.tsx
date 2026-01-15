@@ -9,6 +9,9 @@ import { Slider } from "@/components/ui/slider"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Copy, Eye, EyeOff } from "lucide-react"
 import { z } from "zod"
+import { useAuthStore } from "@/store/authStore"
+import { encryptPassword } from "@/lib/crypto"
+import { useVaultStore } from "@/store/vaultStore"
 
 const passwordFormSchema = z.object({
   websiteName: z.string().min(1, "Website name is required").max(100, "Website name is too long"),
@@ -41,6 +44,7 @@ export function PasswordGeneratorModal({ open, onOpenChange }: PasswordGenerator
   const [showPassword, setShowPassword] = useState(false)
   const [passwordStrength, setPasswordStrength] = useState<"weak" | "medium" | "strong">("medium")
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof PasswordFormData, string>>>({})
+  const user = useAuthStore((s: any) => s.user)
 
   const getSecureRandomInt = (max: number): number => {
     const randomBuffer = new Uint32Array(1)
@@ -52,7 +56,7 @@ export function PasswordGeneratorModal({ open, onOpenChange }: PasswordGenerator
     const shuffled = [...array]
     for (let i = shuffled.length - 1; i > 0; i--) {
       const j = getSecureRandomInt(i + 1)
-      ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+        ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
     }
     return shuffled
   }
@@ -159,7 +163,7 @@ export function PasswordGeneratorModal({ open, onOpenChange }: PasswordGenerator
     navigator.clipboard.writeText(generatedPassword)
   }
 
-  const handleSavePassword = () => {
+  const handleSavePassword = async () => {
     const formData: PasswordFormData = {
       websiteName,
       websiteUrl,
@@ -181,17 +185,53 @@ export function PasswordGeneratorModal({ open, onOpenChange }: PasswordGenerator
       return
     }
 
-    setFormErrors({})
-    alert("Password saved! (UI only - no backend)")
-    onOpenChange(false)
+    if (!user?.uid) {
+      alert("Not authenticated")
+      return
+    }
 
-    // Reset form
-    setWebsiteName("")
-    setWebsiteUrl("")
-    setUsername("")
-    setEmail("")
-    setGeneratedPassword("")
+    try {
+      // 3. Encrypt password
+      const { encryptedPassword, iv } =
+        await encryptPassword(generatedPassword, useVaultStore.getState().cryptoKey)
+
+      // 4. Send encrypted payload to API
+      const res = await fetch("/api/vault", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: websiteName,
+          url: websiteUrl,
+          username,
+          email,
+          encryptedPassword,
+          iv,
+          hasWarning: passwordStrength === "weak",
+          isFavorite: false,
+        }),
+      })
+
+      if (!res.ok) {
+        throw new Error("Failed to save password")
+      }
+
+      // 5. Reset UI
+      setWebsiteName("")
+      setWebsiteUrl("")
+      setUsername("")
+      setEmail("")
+      setGeneratedPassword("")
+      setShowPassword(false)
+
+      onOpenChange(false)
+    } catch (err) {
+      console.error(err)
+      alert("Failed to save password")
+    }
   }
+
 
   const isFormValid = websiteName && websiteUrl && email && generatedPassword
 

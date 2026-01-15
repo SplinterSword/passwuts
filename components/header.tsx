@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useRouter } from "next/navigation"
+import { useAuthStore } from "@/store/authStore"
 
 interface HeaderProps {
   title: string
@@ -21,7 +22,7 @@ interface HeaderProps {
 
 export function Header({ title, onAddClick, showAddButton = true }: HeaderProps) {
   const router = useRouter()
-
+  const user = useAuthStore((s : any) => s.user)
   const handleLogout = async () => {
 
     try {
@@ -82,18 +83,18 @@ export function Header({ title, onAddClick, showAddButton = true }: HeaderProps)
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                className="h-8 w-8 sm:h-9 sm:w-9 rounded-full p-0 overflow-hidden ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="h-8 w-8 sm:h-9 sm:w-9 rounded-full p-0 overflow-hidden"
               >
-                <div className="h-full w-full bg-primary flex items-center justify-center text-primary-foreground font-semibold text-sm">
-                  U
+                <div className="h-full w-full flex items-center justify-center">
+                  <img src={user.picture} alt="Profile Pic" className="h-full w-full object-cover" />
                 </div>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56" align="end" forceMount>
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">User</p>
-                  <p className="text-xs leading-none text-muted-foreground">user@example.com</p>
+                  <p className="text-sm font-medium leading-none">{user.displayName}</p>
+                  <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
