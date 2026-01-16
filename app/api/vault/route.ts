@@ -1,24 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { adminAuth, adminDb } from "@/lib/firebaseAdmin"
+import { adminDb } from "@/lib/firebaseAdmin"
+import { requireAuth } from "@/lib/verify-admin-token"
 import type { VaultItemFromAPI } from "@/types/vault"
 
 export async function POST(req: NextRequest) {
   try {
-    const sessionCookie = req.cookies.get("session")?.value;
-
-    if (!sessionCookie) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-
-    const decodedClaims = await adminAuth.verifySessionCookie(
-      sessionCookie,
-      true // checkRevoked
-    );
-
-    const uid = decodedClaims.uid;
+    // 1. Verify session cookie
+    const { uid } = await requireAuth(req)
 
     const body = await req.json();
 
@@ -44,18 +32,8 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
-    const sessionCookie = req.cookies.get("session")?.value
-
-    if (!sessionCookie) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const decodedClaims = await adminAuth.verifySessionCookie(
-      sessionCookie,
-      true // checkRevoked
-    )
-
-    const uid = decodedClaims.uid
+    // 1. Verify session cookie
+    const { uid } = await requireAuth(req)
 
     const snapshot = await adminDb
       .collection("users")

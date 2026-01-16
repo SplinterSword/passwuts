@@ -1,20 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
-import { adminAuth, adminDb } from "@/lib/firebaseAdmin"
+import { adminDb } from "@/lib/firebaseAdmin"
+import { requireAuth } from "@/lib/verify-admin-token"
 
 export async function GET(req: NextRequest) {
   try {
     // 1. Verify session cookie
-    const sessionCookie = req.cookies.get("session")?.value
-    if (!sessionCookie) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const decoded = await adminAuth.verifySessionCookie(
-      sessionCookie,
-      true
-    )
-
-    const uid = decoded.uid
+    const { uid } = await requireAuth(req)
 
     // 2. Fetch vault metadata
     const metaRef = adminDb
