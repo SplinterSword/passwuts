@@ -2,7 +2,6 @@
 
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { VaultSetupGate } from "@/components/VaultSetupGate"
 import { VaultGate } from "@/components/VaultGate"
 import { useAuthStore } from "@/store/authStore"
 
@@ -27,10 +26,8 @@ export default function AppLayout({
   }
 
   return (
-    <VaultSetupGate>
-      <VaultGate>
-        {children}
-      </VaultGate>
-    </VaultSetupGate>
+    <VaultGate>
+      {children}
+    </VaultGate>
   )
 }

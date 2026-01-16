@@ -37,7 +37,7 @@ export async function unlockVault(
   uid: string
 ) {
   // 1. Fetch verifier
-  const res = await fetch("/api/vault/meta")
+  const res = await fetch("/api/vault/meta/exists")
   if (!res.ok) {
     throw new Error("Vault not initialized")
   }

@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useRouter } from "next/navigation"
 import { useAuthStore } from "@/store/authStore"
+import { useVaultStore } from "@/store/vaultStore"
 
 interface HeaderProps {
   title: string
@@ -22,19 +23,29 @@ interface HeaderProps {
 
 export function Header({ title, onAddClick, showAddButton = true }: HeaderProps) {
   const router = useRouter()
-  const user = useAuthStore((s : any) => s.user)
-  const handleLogout = async () => {
+  const user = useAuthStore((s: any) => s.user)
+  const lockVault = useVaultStore((s) => s.lock)
 
+  const handleLogout = async () => {
     try {
-      const response = await fetch('/api/auth/logout', {
-        method: 'POST',
-      });
+      const response = await fetch("/api/auth/logout", {
+        method: "POST",
+      })
+
+      // 🔐 ALWAYS lock vault on logout (even if request fails)
+      lockVault()
 
       if (response.ok) {
-        router.push("/login");
+        router.push("/login")
+      } else {
+        // Fail closed: still redirect
+        router.push("/login")
       }
     } catch (error) {
-      console.error('Logout error:', error);
+      // Network failure → still lock vault
+      lockVault()
+      console.error("Logout error:", error)
+      router.push("/login")
     }
   }
 
@@ -86,7 +97,18 @@ export function Header({ title, onAddClick, showAddButton = true }: HeaderProps)
                 className="h-8 w-8 sm:h-9 sm:w-9 rounded-full p-0 overflow-hidden"
               >
                 <div className="h-full w-full flex items-center justify-center">
-                  <img src={user.picture} alt="Profile Pic" className="h-full w-full object-cover" />
+                  {user?.picture ? (
+                    <img
+                      src={user.picture}
+                      alt="Profile picture"
+                      className="h-full w-full object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <div className="h-full w-full flex items-center justify-center bg-muted">
+                      <User className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                  )}
                 </div>
               </Button>
             </DropdownMenuTrigger>

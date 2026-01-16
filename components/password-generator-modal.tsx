@@ -44,7 +44,9 @@ export function PasswordGeneratorModal({ open, onOpenChange }: PasswordGenerator
   const [showPassword, setShowPassword] = useState(false)
   const [passwordStrength, setPasswordStrength] = useState<"weak" | "medium" | "strong">("medium")
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof PasswordFormData, string>>>({})
-  const user = useAuthStore((s: any) => s.user)
+  const user = useAuthStore((s) => s.user)
+  const { cryptoKey, isUnlocked } = useVaultStore()
+
 
   const getSecureRandomInt = (max: number): number => {
     const randomBuffer = new Uint32Array(1)
@@ -177,25 +179,33 @@ export function PasswordGeneratorModal({ open, onOpenChange }: PasswordGenerator
     if (!result.success) {
       const errors: Partial<Record<keyof PasswordFormData, string>> = {}
       result.error.errors.forEach((error) => {
-        if (error.path[0]) {
-          errors[error.path[0] as keyof PasswordFormData] = error.message
+        const field = error.path[0]
+        if (field) {
+          errors[field as keyof PasswordFormData] = error.message
         }
       })
       setFormErrors(errors)
       return
     }
 
+    // 🔐 HARD SECURITY GATES
     if (!user?.uid) {
       alert("Not authenticated")
       return
     }
 
-    try {
-      // 3. Encrypt password
-      const { encryptedPassword, iv } =
-        await encryptPassword(generatedPassword, useVaultStore.getState().cryptoKey)
+    if (!isUnlocked || !cryptoKey) {
+      alert("Vault is locked. Unlock vault to continue.")
+      return
+    }
 
-      // 4. Send encrypted payload to API
+    try {
+      // Encrypt password using vault key
+      const { encryptedPassword, iv } = await encryptPassword(
+        generatedPassword,
+        cryptoKey
+      )
+
       const res = await fetch("/api/vault", {
         method: "POST",
         headers: {
@@ -217,20 +227,22 @@ export function PasswordGeneratorModal({ open, onOpenChange }: PasswordGenerator
         throw new Error("Failed to save password")
       }
 
-      // 5. Reset UI
+      // Reset state safely
       setWebsiteName("")
       setWebsiteUrl("")
       setUsername("")
       setEmail("")
       setGeneratedPassword("")
       setShowPassword(false)
+      setFormErrors({})
 
       onOpenChange(false)
     } catch (err) {
       console.error(err)
-      alert("Failed to save password")
+      alert("Failed to save password securely")
     }
   }
+
 
 
   const isFormValid = websiteName && websiteUrl && email && generatedPassword
