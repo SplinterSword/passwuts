@@ -40,6 +40,7 @@ export default function AccountsPage() {
   const [accounts, setAccounts] = useState<VaultAccount[]>([])
   const isUnlocked = useVaultStore((s) => s.isUnlocked)
   const cryptoKey = useVaultStore((s) => s.cryptoKey)
+  const refreshCounter = useVaultStore((s) => s.refreshCounter)
   const [loading, setLoading] = useState(true)
   const [favoriteLoading, setFavoriteLoading] = useState<Set<number>>(new Set())
 
@@ -109,7 +110,7 @@ export default function AccountsPage() {
     return () => {
       cancelled = true
     }
-  }, [isUnlocked, cryptoKey])
+  }, [isUnlocked, cryptoKey, refreshCounter])
 
 
   const togglePasswordVisibility = (accountId: number) => {

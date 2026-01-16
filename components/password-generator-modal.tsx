@@ -46,6 +46,7 @@ export function PasswordGeneratorModal({ open, onOpenChange }: PasswordGenerator
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof PasswordFormData, string>>>({})
   const user = useAuthStore((s) => s.user)
   const { cryptoKey, isUnlocked } = useVaultStore()
+  const triggerRefresh = useVaultStore((s) => s.triggerRefresh)
 
 
   const getSecureRandomInt = (max: number): number => {
@@ -228,6 +229,7 @@ export function PasswordGeneratorModal({ open, onOpenChange }: PasswordGenerator
       }
 
       // Reset state safely
+      triggerRefresh()
       setWebsiteName("")
       setWebsiteUrl("")
       setUsername("")
