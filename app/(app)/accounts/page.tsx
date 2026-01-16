@@ -41,6 +41,7 @@ export default function AccountsPage() {
   const isUnlocked = useVaultStore((s) => s.isUnlocked)
   const cryptoKey = useVaultStore((s) => s.cryptoKey)
   const [loading, setLoading] = useState(true)
+  const [favoriteLoading, setFavoriteLoading] = useState<Set<number>>(new Set())
 
   useEffect(() => {
     if (!isUnlocked || !cryptoKey) {
@@ -123,6 +124,68 @@ export default function AccountsPage() {
     })
   }
 
+  const toggleFavorite = async (accountId: string) => {
+    // Mark this item as loading
+    setFavoriteLoading((prev) => new Set(prev).add(parseInt(accountId)))
+
+    // Find current state
+    const current = accounts.find((a) => a.id === accountId)
+    if (!current) {
+      setFavoriteLoading((prev) => {
+        const next = new Set(prev)
+        next.delete(parseInt(accountId))
+        return next
+      })
+      return
+    }
+
+    const nextValue = !current.isFavorite
+
+    // 🔁 Optimistic UI update
+    setAccounts((prev) =>
+      prev.map((a) =>
+        a.id === accountId ? { ...a, isFavorite: nextValue } : a
+      )
+    )
+
+    try {
+      const res = await fetch(`/api/vault/${accountId}/favorite`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ isFavorite: nextValue }),
+      })
+
+      if (!res.ok) {
+        throw new Error("Failed to update favorite")
+      }
+
+      // Re-sort so favorites stay on top
+      setAccounts((prev) =>
+        [...prev].sort((a, b) => Number(b.isFavorite) - Number(a.isFavorite))
+      )
+    } catch (err) {
+      console.error("Failed to update favorite:", err)
+
+      // ❌ Rollback on failure
+      setAccounts((prev) =>
+        prev.map((a) =>
+          a.id === accountId ? { ...a, isFavorite: current.isFavorite } : a
+        )
+      )
+    } finally {
+      // Clear loading state
+      setFavoriteLoading((prev) => {
+        const next = new Set(prev)
+        next.delete(parseInt(accountId))
+        return next
+      })
+    }
+  }
+
+
   const copyToClipboard = async (text: string, itemId: string) => {
     try {
       await navigator.clipboard.writeText(text)
@@ -175,10 +238,18 @@ export default function AccountsPage() {
                         <Button
                           variant="ghost"
                           size="icon"
+                          disabled={favoriteLoading.has(parseInt(account.id))}
+                          onClick={() => toggleFavorite(account.id)}
                           className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary"
                         >
-                          <Star className="h-4 w-4" />
+                          <Star
+                            className={`h-4 w-4 transition-colors ${account.isFavorite
+                              ? "fill-yellow-400 text-yellow-400"
+                              : ""
+                              }`}
+                          />
                         </Button>
+
                         <Button
                           variant="ghost"
                           size="icon"
