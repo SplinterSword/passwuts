@@ -1,4 +1,4 @@
-# Passwuts – Password Generator and Vault (Next.js)
+# Passwuts – Password Generator and Vault
 
 Passwuts is a modern, client-first password generator and vault built with Next.js App Router. It uses Firebase Authentication and Firestore with a secure, user-held encryption model: passwords are encrypted/decrypted in the browser using a key derived from the user's master password. The server never sees the plaintext passwords or the user's encryption key.
 
@@ -135,6 +135,3 @@ All `/api/vault*` routes require a valid `session` cookie. See `lib/verify-admin
 ## Deployment
 - Build with `npm run build` and run `npm start`, or deploy to Vercel.
 - Set the same environment variables in your hosting platform.
-
-## License
-This project is provided as-is for educational and personal use. Add your preferred license here if needed.
