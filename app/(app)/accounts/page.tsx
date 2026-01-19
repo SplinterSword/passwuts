@@ -331,7 +331,7 @@ export default function AccountsPage() {
                     )}
 
                     {/* Open in Browser Button */}
-                    <Button variant="ghost" className="w-full justify-between text-foreground hover:bg-secondary">
+                    <Button onClick={() => window.open(account.url, "_blank")} variant="ghost" className="w-full justify-between text-foreground hover:bg-primary/90">
                       <span className="text-sm">Open in browser</span>
                       <ChevronDown className="h-4 w-4" />
                     </Button>
