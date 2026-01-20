@@ -33,6 +33,7 @@ app/
     me/route.ts         -> returns current user from session cookie
     vault/route.ts      -> GET (list), POST (add) encrypted vault items
     vault/setup/route.ts-> stores initial vault verifier metadata
+    vault/meta/exists   -> checks if vault exists for user
     vault/[id]/favorite -> PATCH favorite state (see client usage)
 components/
   AuthProvider.tsx      -> loads user from /api/me into Zustand
