@@ -1,4 +1,4 @@
-import { deriveKey, encryptPassword, decryptPassword } from "@/lib/crypto"
+import { deriveKey, encryptPassword, decryptPassword } from "@pm/crypto"
 import { useVaultStore } from "@/store/vaultStore"
 
 export async function setupVault(

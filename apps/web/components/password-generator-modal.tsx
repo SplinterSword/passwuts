@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Copy, Eye, EyeOff } from "lucide-react"
 import { z } from "zod"
 import { useAuthStore } from "@/store/authStore"
-import { encryptPassword } from "@/lib/crypto"
+import { encryptPassword } from "@pm/crypto"
 import { useVaultStore } from "@/store/vaultStore"
 
 const passwordFormSchema = z.object({

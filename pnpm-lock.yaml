@@ -6,13 +6,20 @@ settings:
 
 importers:
 
-  .: {}
+  .:
+    devDependencies:
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
 
   apps/web:
     dependencies:
       '@hookform/resolvers':
         specifier: ^3.10.0
         version: 3.10.0(react-hook-form@7.71.1(react@19.2.0))
+      '@pm/crypto':
+        specifier: workspace:*
+        version: link:../../packages/crypto
       '@radix-ui/react-accordion':
         specifier: 1.2.2
         version: 1.2.2(@types/react-dom@19.2.3(@types/react@19.2.8))(@types/react@19.2.8)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -194,6 +201,10 @@ importers:
       typescript:
         specifier: ^5
         version: 5.9.3
+
+  packages/crypto: {}
+
+  packages/types: {}
 
 packages:
 

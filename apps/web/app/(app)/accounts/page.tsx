@@ -8,8 +8,8 @@ import { Copy, Eye, EyeOff, ChevronDown, Star, MoreVertical, Check } from "lucid
 import { Card } from "@/components/ui/card"
 import { ClientGuard } from "@/components/ClientGuard"
 import { useVaultStore } from "@/store/vaultStore"
-import { decryptPassword } from "@/lib/crypto"
-import { VaultAccount, VaultItemFromAPI } from "@/types/vault"
+import { decryptPassword } from "@pm/crypto"
+import { VaultAccount, VaultItemFromAPI } from "@pm/types"
 
 function AccountsSkeleton() {
   return (

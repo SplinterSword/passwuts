@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin"
 import { requireAuth } from "@/lib/verify-admin-token"
-import type { VaultItemFromAPI } from "@/types/vault"
+import type { VaultItemFromAPI } from "@pm/types"
 
 export async function POST(req: NextRequest) {
   try {

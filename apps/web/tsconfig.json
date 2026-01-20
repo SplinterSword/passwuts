@@ -30,6 +30,6 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     "**/*.mts"
-  ],
+, "../../packages/types/src/vault.ts", "../../packages/crypto/src/crypto.ts"  ],
   "exclude": ["node_modules"]
 }
