@@ -39,7 +39,7 @@ components/
   AuthProvider.tsx      -> loads user from /api/me into Zustand
   ClientGuard.tsx       -> client-side guard (used by pages)
   VaultGate.tsx         -> ensures vault is initialized/unlocked
-  header.tsx, password-generator-modal.tsx, ui/*
+  header.tsx, password-generator-modal.tsx, vault-setup-modal.tsx, vault-unlock-modal.tsx ui/*
 lib/
   Firebase/initialize.ts-> Firebase client SDK init (NEXT_PUBLIC_* envs)
   firebaseAdmin.ts      -> Admin SDK init (service account envs)
