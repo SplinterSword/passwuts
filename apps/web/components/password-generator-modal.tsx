@@ -514,7 +514,7 @@ export function PasswordGeneratorModal({ open, onOpenChange }: PasswordGenerator
               onClick={handleSavePassword}
               disabled={!isFormValid}
               variant="outline"
-              className="w-full border-border text-foreground hover:bg-secondary disabled:opacity-50 disabled:cursor-not-allowed bg-transparent"
+              className="w-full border-border text-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed bg-transparent"
             >
               Save Password
             </Button>
