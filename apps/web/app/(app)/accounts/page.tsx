@@ -4,12 +4,18 @@ import { useState, useEffect } from "react"
 import { Header } from "@/components/header"
 import { PasswordGeneratorModal } from "@/components/password-generator-modal"
 import { Button } from "@/components/ui/button"
-import { Copy, Eye, EyeOff, ChevronDown, Star, MoreVertical, Check } from "lucide-react"
+import { Copy, Eye, EyeOff, ChevronDown, Star, MoreVertical, Check, Trash2 } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { ClientGuard } from "@/components/ClientGuard"
 import { useVaultStore } from "@/store/vaultStore"
 import { decryptPassword } from "@pm/crypto"
 import { VaultAccount, VaultItemFromAPI } from "@pm/types"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 function AccountsSkeleton() {
   return (
@@ -43,6 +49,8 @@ export default function AccountsPage() {
   const refreshCounter = useVaultStore((s) => s.refreshCounter)
   const [loading, setLoading] = useState(true)
   const [favoriteLoading, setFavoriteLoading] = useState<Set<number>>(new Set())
+  const [openMenuId, setOpenMenuId] = useState<number | null>(null)
+  const [deleteLoading, setDeleteLoading] = useState<Set<number>>(new Set())
 
   useEffect(() => {
     if (!isUnlocked || !cryptoKey) {
@@ -50,7 +58,6 @@ export default function AccountsPage() {
       setLoading(false)
       return
     }
-
 
     let cancelled = false
 
@@ -128,6 +135,7 @@ export default function AccountsPage() {
   const toggleFavorite = async (accountId: string) => {
     // Mark this item as loading
     setFavoriteLoading((prev) => new Set(prev).add(parseInt(accountId)))
+    setLoading(true)
 
     // Find current state
     const current = accounts.find((a) => a.id === accountId)
@@ -183,9 +191,33 @@ export default function AccountsPage() {
         next.delete(parseInt(accountId))
         return next
       })
+      setLoading(false)
     }
   }
 
+  const deleteAccount = async (accountId: number) => {
+    setDeleteLoading((prev) => new Set(prev).add(accountId))
+    setOpenMenuId(null)
+    setLoading(true)
+
+    try {
+      await fetch(`/api/vault/${accountId}/delete`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+      })
+
+      setAccounts((prev) => prev.filter((account) => account.id !== accountId))
+    } catch (err) {
+      console.error("Failed to delete account:", err)
+    } finally {
+      setDeleteLoading((prev) => {
+        const newSet = new Set(prev)
+        newSet.delete(accountId)
+        return newSet
+      })
+      setLoading(false)
+    }
+  }
 
   const copyToClipboard = async (text: string, itemId: string) => {
     try {
@@ -250,28 +282,75 @@ export default function AccountsPage() {
                               }`}
                           />
                         </Button>
-
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary"
-                        >
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </div>
+                        <DropdownMenu open={openMenuId === account.id} onOpenChange={(open : number) => setOpenMenuId(open ? account.id : null)}>
+                          <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary"
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-40">
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive cursor-pointer hover:bg-secondary"
+                            onClick={() => deleteAccount(account.id)}
+                            disabled={deleteLoading.has(account.id)}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            {deleteLoading.has(account.id) ? "Deleting..." : "Delete"}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
+                  </div>
 
-                    {/* Username */}
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between bg-secondary/50 rounded px-3 py-2 gap-2">
-                        <span className="text-sm text-foreground font-mono break-all">{account.username}</span>
+                  {/* Username */}
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between bg-secondary/50 rounded px-3 py-2 gap-2">
+                      <span className="text-sm text-foreground font-mono break-all">{account.username}</span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-muted-foreground hover:text-foreground shrink-0"
+                        onClick={() => copyToClipboard(account.username, `username-${account.id}`)}
+                      >
+                        {copiedItem === `username-${account.id}` ? (
+                          <Check className="h-3 w-3 text-primary" />
+                        ) : (
+                          <Copy className="h-3 w-3" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Password */}
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between bg-secondary/50 rounded px-3 py-2 gap-2">
+                      <span className="text-sm text-foreground font-mono break-all">
+                        {visiblePasswords.has(account.id) ? account.password : "••••••••"}
+                      </span>
+                      <div className="flex items-center gap-1 shrink-0">
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-6 w-6 text-muted-foreground hover:text-foreground shrink-0"
-                          onClick={() => copyToClipboard(account.username, `username-${account.id}`)}
+                          className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                          onClick={() => togglePasswordVisibility(account.id)}
                         >
-                          {copiedItem === `username-${account.id}` ? (
+                          {visiblePasswords.has(account.id) ? (
+                            <EyeOff className="h-3 w-3" />
+                          ) : (
+                            <Eye className="h-3 w-3" />
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                          onClick={() => copyToClipboard(account.password, `password-${account.id}`)}
+                        >
+                          {copiedItem === `password-${account.id}` ? (
                             <Check className="h-3 w-3 text-primary" />
                           ) : (
                             <Copy className="h-3 w-3" />
@@ -279,72 +358,38 @@ export default function AccountsPage() {
                         </Button>
                       </div>
                     </div>
-
-                    {/* Password */}
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between bg-secondary/50 rounded px-3 py-2 gap-2">
-                        <span className="text-sm text-foreground font-mono break-all">
-                          {visiblePasswords.has(account.id) ? account.password : "••••••••"}
-                        </span>
-                        <div className="flex items-center gap-1 shrink-0">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                            onClick={() => togglePasswordVisibility(account.id)}
-                          >
-                            {visiblePasswords.has(account.id) ? (
-                              <EyeOff className="h-3 w-3" />
-                            ) : (
-                              <Eye className="h-3 w-3" />
-                            )}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                            onClick={() => copyToClipboard(account.password, `password-${account.id}`)}
-                          >
-                            {copiedItem === `password-${account.id}` ? (
-                              <Check className="h-3 w-3 text-primary" />
-                            ) : (
-                              <Copy className="h-3 w-3" />
-                            )}
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Warning Message */}
-                    {account.hasWarning && (
-                      <div className="flex items-center gap-2 text-destructive text-xs">
-                        <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                          />
-                        </svg>
-                        <span className="break-words">Passwords require your attention</span>
-                      </div>
-                    )}
-
-                    {/* Open in Browser Button */}
-                    <Button onClick={() => window.open(account.url, "_blank")} variant="ghost" className="w-full justify-between text-foreground hover:bg-primary/90">
-                      <span className="text-sm">Open in browser</span>
-                      <ChevronDown className="h-4 w-4" />
-                    </Button>
                   </div>
-                </Card>
-              ))}
-            </div>
-          )}
-        </div>
 
-        {/* Password Generator Modal */}
-        <PasswordGeneratorModal open={isModalOpen} onOpenChange={setIsModalOpen} />
+                  {/* Warning Message */}
+                  {account.hasWarning && (
+                    <div className="flex items-center gap-2 text-destructive text-xs">
+                      <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                        />
+                      </svg>
+                      <span className="break-words">Passwords require your attention</span>
+                    </div>
+                  )}
+
+                  {/* Open in Browser Button */}
+                  <Button onClick={() => window.open(account.url, "_blank")} variant="ghost" className="w-full justify-between text-foreground hover:bg-primary/90">
+                    <span className="text-sm">Open in browser</span>
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </div>
+                </Card>
+          ))}
+        </div>
+          )}
       </div>
-    </ClientGuard>
+
+      {/* Password Generator Modal */}
+      <PasswordGeneratorModal open={isModalOpen} onOpenChange={setIsModalOpen} />
+    </div>
+    </ClientGuard >
   )
 }
