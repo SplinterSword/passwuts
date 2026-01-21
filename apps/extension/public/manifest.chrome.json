@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "Passwuts",
+  "description": "Secure password manager",
+  "version": "0.0.1",
+
+  "action": {
+    "default_popup": "popup/index.html"
+  },
+
+  "background": {
+    "service_worker": "background/index.js",
+    "type": "module"
+  },
+
+  "permissions": ["storage", "activeTab"],
+  "host_permissions": ["<all_urls>"],
+
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content/index.js"]
+    }
+  ]
+}
