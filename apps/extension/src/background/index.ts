@@ -7,7 +7,3 @@ browser.runtime.onInstalled.addListener(() => {
 browser.runtime.onStartup.addListener(() => {
   console.log("Passwuts started (onStartup)")
 })
-
-browser.runtime.onMessage.addListener((msg: any) => {
-  console.log("Background received message:", msg)
-})
