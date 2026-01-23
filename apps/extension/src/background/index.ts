@@ -1,8 +1,9 @@
 import browser from "webextension-polyfill"
-import { deriveKey, decryptPassword } from "@pm/crypto"
+import { deriveKey, decryptPassword, encryptPassword } from "@pm/crypto"
 import { setVaultKey, getVaultKey, clearVaultKey } from "../../shared/vaultStore"
+import { generateSecurePassword } from "./passwordGenerator"
 
-browser.runtime.onMessage.addListener(async (msg) => {
+browser.runtime.onMessage.addListener(async (msg: any) => {
   try {
     switch (msg.type) {
       /**
@@ -65,42 +66,91 @@ browser.runtime.onMessage.addListener(async (msg) => {
       }
 
       /**
-       * FETCH + DECRYPT VAULT
+      * Get active tab site info
+      */
+      case "GET_ACTIVE_SITE_INFO": {
+        const [tab] = await browser.tabs.query({
+          active: true,
+          currentWindow: true,
+        })
+
+        if (!tab?.url) return {}
+
+        const url = new URL(tab.url)
+
+        return {
+          url: url.origin,
+          name: url.hostname.replace(/^www\./, ""),
+        }
+      }
+
+      /**
+       * Generate password only
        */
-      case "FETCH_VAULT_ITEMS": {
+      case "GENERATE_PASSWORD": {
+        return {
+          password: generateSecurePassword(16),
+        }
+      }
+
+      /**
+       * Encrypt & save password
+       */
+      case "GENERATE_AND_SAVE_PASSWORD": {
         const key = getVaultKey()
-        if (!key) return { error: "Vault locked" }
+        if (!key) {
+          return { error: "Vault is locked" }
+        }
 
         const { idToken } = await browser.storage.local.get("idToken")
-        if (!idToken) return { error: "Not authenticated" }
+        if (!idToken) {
+          return { error: "Not authenticated" }
+        }
+
+        const {
+          name,
+          url,
+          username,
+          email,
+          password,
+        } = msg.payload || {}
+
+        if (!name || !url || !password) {
+          return { error: "Missing required fields" }
+        }
+
+        // Encrypt using vault key (same as web app)
+        const { encryptedPassword, iv } = await encryptPassword(
+          password,
+          key
+        )
 
         const res = await fetch(
           "http://localhost:3000/api/vault",
           {
+            method: "POST",
             headers: {
+              "Content-Type": "application/json",
               Authorization: `Bearer ${idToken}`,
             },
+            body: JSON.stringify({
+              name,
+              url,
+              username,
+              email,
+              encryptedPassword,
+              iv,
+              hasWarning: password.length < 12,
+              isFavorite: false,
+            }),
           }
         )
 
         if (!res.ok) {
-          return { error: "Failed to fetch vault" }
+          return { error: "Failed to save password" }
         }
 
-        const items = await res.json()
-
-        const decrypted = await Promise.all(
-          items.map(async (item: any) => ({
-            ...item,
-            password: await decryptPassword(
-              item.encryptedPassword,
-              item.iv,
-              key
-            ),
-          }))
-        )
-
-        return { items: decrypted }
+        return { success: true }
       }
 
       /**

@@ -4,13 +4,6 @@ import { useEffect, useState } from "react"
 import browser from "webextension-polyfill"
 import { Lock, LogOut, Loader2 } from "lucide-react"
 
-type VaultItem = {
-  id: string
-  name: string
-  username?: string
-  password: string
-}
-
 type UIState =
   | "loggedOut"
   | "locked"
@@ -21,23 +14,42 @@ type UIState =
 
 export default function Popup() {
   const [state, setState] = useState<UIState>("loggedOut")
-  const [password, setPassword] = useState("")
-  const [items, setItems] = useState<VaultItem[]>([])
+  const [masterPassword, setMasterPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
+
+  // Form state
+  const [websiteName, setWebsiteName] = useState("")
+  const [websiteUrl, setWebsiteUrl] = useState("")
+  const [username, setUsername] = useState("")
+  const [email, setEmail] = useState("")
+  const [generatedPassword, setGeneratedPassword] = useState("")
+  const [saving, setSaving] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  const [formErrors, setFormErrors] = useState<{
+    websiteName?: string
+    websiteUrl?: string
+    email?: string
+  }>({})
 
   // Load auth state
   useEffect(() => {
     browser.storage.local.get("idToken").then(({ idToken }) => {
-      if (idToken) setState("locked")
+      setState(idToken ? "locked" : "loggedOut")
     })
   }, [])
+
+  useEffect(() => {
+    setCopied(false)
+  }, [generatedPassword])
 
   // Receive auth success
   useEffect(() => {
     const handler = async (event: MessageEvent) => {
       if (
         event.origin === "http://localhost:3000" &&
-        event.data?.type === "EXTENSION_AUTH_SUCCESS"
+        event.data?.type === "EXTENSION_AUTH_SUCCESS" &&
+        event.data.token
       ) {
         await browser.storage.local.set({ idToken: event.data.token })
         setState("locked")
@@ -60,10 +72,9 @@ export default function Popup() {
     await browser.runtime.sendMessage({ type: "VAULT_LOCK" })
     await browser.storage.local.remove("idToken")
 
-    setItems([])
-    setPassword("")
-    setError(null)
     setState("loggedOut")
+    setError(null)
+    setMasterPassword("")
   }
 
   const unlockVault = async () => {
@@ -72,7 +83,7 @@ export default function Popup() {
 
     const res = await browser.runtime.sendMessage({
       type: "VERIFY_AND_UNLOCK_VAULT",
-      masterPassword: password,
+      masterPassword,
     })
 
     if (res?.needsSetup) {
@@ -86,289 +97,332 @@ export default function Popup() {
       return
     }
 
-    const vault = await browser.runtime.sendMessage({
-      type: "FETCH_VAULT_ITEMS",
+    const site = await browser.runtime.sendMessage({
+      type: "GET_ACTIVE_SITE_INFO",
     })
 
-    if (vault?.error) {
-      setError(vault.error)
-      setState("error")
-      return
+    if (site) {
+      setWebsiteUrl(site.url ?? "")
+      setWebsiteName(site.name ?? "")
     }
 
-    setItems(vault.items)
-    setPassword("")
+    setMasterPassword("")
     setState("unlocked")
   }
 
+  const generatePassword = async () => {
+    const res = await browser.runtime.sendMessage({
+      type: "GENERATE_PASSWORD",
+    })
+
+    if (res?.password) {
+      setGeneratedPassword(res.password)
+    }
+  }
+
+  const validateForm = () => {
+    const errors: typeof formErrors = {}
+
+    if (!websiteName.trim()) {
+      errors.websiteName = "Website name is required"
+    }
+
+    if (!websiteUrl.trim()) {
+      errors.websiteUrl = "Website URL is required"
+    } else {
+      try {
+        new URL(websiteUrl)
+      } catch {
+        errors.websiteUrl = "Enter a valid URL"
+      }
+    }
+
+    if (!email.trim()) {
+      errors.email = "Email is required"
+    } else if (!/^\S+@\S+\.\S+$/.test(email)) {
+      errors.email = "Enter a valid email"
+    }
+
+    setFormErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
+  const savePassword = async () => {
+    if (!generatedPassword) return
+    if (!validateForm()) return
+
+    setSaving(true)
+    setError(null)
+
+    const res = await browser.runtime.sendMessage({
+      type: "GENERATE_AND_SAVE_PASSWORD",
+      payload: {
+        name: websiteName,
+        url: websiteUrl,
+        username,
+        email,
+        password: generatedPassword,
+      },
+    })
+
+    setSaving(false)
+
+    if (res?.error) {
+      setError(res.error)
+      return
+    }
+
+    setUsername("")
+    setEmail("")
+    setGeneratedPassword("")
+    setFormErrors({})
+  }
+
+  const isFormComplete =
+    websiteName.trim() &&
+    websiteUrl.trim() &&
+    email.trim() &&
+    generatedPassword
+
   return (
-    <div 
-      style={{
-        width: "360px",
-        minHeight: "420px",
-        background: "rgb(24, 24, 27)",
-        color: "rgb(250, 250, 251)",
-        padding: "16px",
-        fontFamily: "Lato, system-ui, sans-serif",
-      }}
-    >
-      {/* Header */}
-      <header style={{ marginBottom: "16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <div 
-            style={{
-              width: "32px",
-              height: "32px",
-              borderRadius: "6px",
-              background: "rgba(255, 151, 29, 0.2)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Lock style={{ width: "16px", height: "16px", color: "rgb(255, 151, 29)" }} />
-          </div>
-          <h1 style={{ fontSize: "16px", fontWeight: "600" }}>Passwuts</h1>
+    <div style={container}>
+      <header style={header}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <Lock size={16} color="rgb(255,151,29)" />
+          <strong>Passwuts</strong>
         </div>
         {state === "unlocked" && (
-          <button
-            onClick={logout}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "4px",
-              fontSize: "12px",
-              color: "rgb(161, 161, 170)",
-              background: "transparent",
-              border: "none",
-              cursor: "pointer",
-              padding: "4px 8px",
-              borderRadius: "4px",
-              transition: "color 0.2s",
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.color = "rgb(250, 250, 251)"}
-            onMouseLeave={(e) => e.currentTarget.style.color = "rgb(161, 161, 170)"}
-          >
-            <LogOut style={{ width: "14px", height: "14px" }} />
-            Log out
+          <button onClick={logout} style={iconBtn}>
+            <LogOut size={14} />
           </button>
         )}
       </header>
 
-      {/* Card */}
-      <div 
-        style={{
-          background: "rgb(39, 39, 42)",
-          border: "1px solid rgb(63, 63, 70)",
-          borderRadius: "8px",
-          padding: "16px",
-          display: "flex",
-          flexDirection: "column",
-          gap: "16px",
-        }}
-      >
-        {/* Logged out */}
+      <div style={card}>
         {state === "loggedOut" && (
-          <button
-            onClick={login}
-            style={{
-              width: "100%",
-              background: "rgb(255, 151, 29)",
-              color: "rgb(24, 24, 27)",
-              border: "none",
-              borderRadius: "6px",
-              padding: "10px 12px",
-              fontSize: "14px",
-              fontWeight: "600",
-              cursor: "pointer",
-              transition: "opacity 0.2s",
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.opacity = "0.9"}
-            onMouseLeave={(e) => e.currentTarget.style.opacity = "1"}
-          >
-            Sign in
-          </button>
+          <button onClick={login} style={primaryBtn}>Sign in</button>
         )}
 
-        {/* Locked */}
         {state === "locked" && (
           <>
             <input
               type="password"
               placeholder="Master password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              style={{
-                width: "100%",
-                borderRadius: "6px",
-                background: "rgb(24, 24, 27)",
-                border: "1px solid rgb(63, 63, 70)",
-                padding: "10px 12px",
-                fontSize: "14px",
-                color: "rgb(250, 250, 251)",
-                boxSizing: "border-box",
-                outline: "none",
-                transition: "border-color 0.2s",
-              }}
-              onFocus={(e) => e.currentTarget.style.borderColor = "rgb(255, 151, 29)"}
-              onBlur={(e) => e.currentTarget.style.borderColor = "rgb(63, 63, 70)"}
+              value={masterPassword}
+              onChange={(e) => setMasterPassword(e.target.value)}
+              style={input}
             />
-
-            <button
-              onClick={unlockVault}
-              style={{
-                width: "100%",
-                background: "rgb(255, 151, 29)",
-                color: "rgb(24, 24, 27)",
-                border: "none",
-                borderRadius: "6px",
-                padding: "10px 12px",
-                fontSize: "14px",
-                fontWeight: "600",
-                cursor: "pointer",
-                transition: "opacity 0.2s",
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.opacity = "0.9"}
-              onMouseLeave={(e) => e.currentTarget.style.opacity = "1"}
-            >
+            <button onClick={unlockVault} style={primaryBtn}>
               Unlock Vault
             </button>
           </>
         )}
 
-        {/* Unlocking */}
         {state === "unlocking" && (
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", padding: "16px 0" }}>
-            <Loader2 style={{ width: "16px", height: "16px", color: "rgb(255, 151, 29)", animation: "spin 1s linear infinite" }} />
-            <p style={{ fontSize: "14px", color: "rgb(161, 161, 170)" }}>Unlocking…</p>
+          <div style={{ textAlign: "center", color: "#aaa" }}>
+            <Loader2 size={16} /> Unlocking…
           </div>
         )}
 
-        {/* Error */}
+        {state === "needsSetup" && (
+          <>
+            <p style={{ color: "#aaa" }}>Vault not set up.</p>
+            <button
+              onClick={() => window.open("http://localhost:3000", "_blank")}
+              style={primaryBtn}
+            >
+              Set up vault
+            </button>
+          </>
+        )}
+
         {state === "error" && (
           <>
-            <p style={{ fontSize: "14px", color: "rgb(239, 68, 68)" }}>{error}</p>
-            <button
-              onClick={() => setState("locked")}
-              style={{
-                width: "100%",
-                background: "transparent",
-                border: "1px solid rgb(63, 63, 70)",
-                borderRadius: "6px",
-                padding: "10px 12px",
-                fontSize: "14px",
-                color: "rgb(250, 250, 251)",
-                cursor: "pointer",
-                transition: "background-color 0.2s",
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "rgb(63, 63, 70)"}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
-            >
+            <p style={errorText}>{error}</p>
+            <button onClick={() => setState("locked")} style={secondaryBtn}>
               Try again
             </button>
           </>
         )}
 
-        {/* Needs setup */}
-        {state === "needsSetup" && (
+        {state === "unlocked" && (
           <>
-            <p style={{ fontSize: "14px", color: "rgb(161, 161, 170)" }}>
-              Your vault is not set up yet.
-            </p>
-            <button
-              onClick={() => window.open("http://localhost:3000/", "_blank")}
-              style={{
-                width: "100%",
-                background: "rgb(255, 151, 29)",
-                color: "rgb(24, 24, 27)",
-                border: "none",
-                borderRadius: "6px",
-                padding: "10px 12px",
-                fontSize: "14px",
-                fontWeight: "600",
-                cursor: "pointer",
-                transition: "opacity 0.2s",
+            <input
+              value={websiteName}
+              onChange={(e) => {
+                setWebsiteName(e.target.value)
+                if (formErrors.websiteName)
+                  setFormErrors((p) => ({ ...p, websiteName: undefined }))
               }}
-              onMouseEnter={(e) => e.currentTarget.style.opacity = "0.9"}
-              onMouseLeave={(e) => e.currentTarget.style.opacity = "1"}
-            >
-              Set up vault
+              placeholder="Website name"
+              style={input}
+            />
+            {formErrors.websiteName && <span style={errorText}>{formErrors.websiteName}</span>}
+
+            <input
+              value={websiteUrl}
+              onChange={(e) => {
+                setWebsiteUrl(e.target.value)
+                if (formErrors.websiteUrl)
+                  setFormErrors((p) => ({ ...p, websiteUrl: undefined }))
+              }}
+              placeholder="Website URL"
+              style={input}
+            />
+            {formErrors.websiteUrl && <span style={errorText}>{formErrors.websiteUrl}</span>}
+
+            <input
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Username (optional)"
+              style={input}
+            />
+
+            <input
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value)
+                if (formErrors.email)
+                  setFormErrors((p) => ({ ...p, email: undefined }))
+              }}
+              placeholder="Email"
+              style={input}
+            />
+            {formErrors.email && <span style={errorText}>{formErrors.email}</span>}
+
+            <button onClick={generatePassword} style={secondaryBtn}>
+              Generate Password
             </button>
+
+            {generatedPassword && (
+              <div style={passwordBox}>
+                <code style={passwordText}>{generatedPassword}</code>
+
+                <button
+                  onClick={async () => {
+                    await navigator.clipboard.writeText(generatedPassword)
+                    setCopied(true)
+                    setTimeout(() => setCopied(false), 1500)
+                  }}
+                  style={copyBtn}
+                >
+                  {copied ? "Copied!" : "Copy"}
+                </button>
+              </div>
+            )}
+
             <button
-              onClick={() => setState("locked")}
+              onClick={savePassword}
+              disabled={saving || !isFormComplete}
               style={{
-                width: "100%",
-                background: "transparent",
-                border: "1px solid rgb(63, 63, 70)",
-                borderRadius: "6px",
-                padding: "10px 12px",
-                fontSize: "14px",
-                color: "rgb(250, 250, 251)",
-                cursor: "pointer",
-                transition: "background-color 0.2s",
+                ...primaryBtn,
+                opacity: saving || !isFormComplete ? 0.6 : 1,
+                cursor: saving || !isFormComplete ? "not-allowed" : "pointer",
               }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "rgb(63, 63, 70)"}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
             >
-              Retry
+              {saving ? "Saving…" : "Save Password"}
             </button>
           </>
         )}
-
-        {/* Unlocked */}
-        {state === "unlocked" && (
-          <ul 
-            style={{
-              margin: 0,
-              padding: 0,
-              listStyle: "none",
-              display: "flex",
-              flexDirection: "column",
-              gap: "12px",
-              maxHeight: "260px",
-              overflowY: "auto",
-            }}
-          >
-            {items.map((item) => (
-              <li
-                key={item.id}
-                style={{
-                  border: "1px solid rgb(63, 63, 70)",
-                  borderRadius: "6px",
-                  padding: "12px",
-                  background: "rgb(24, 24, 27)",
-                }}
-              >
-                <div style={{ fontSize: "14px", fontWeight: "500" }}>{item.name}</div>
-                {item.username && (
-                  <div style={{ fontSize: "12px", color: "rgb(161, 161, 170)", marginTop: "4px" }}>
-                    {item.username}
-                  </div>
-                )}
-                <code 
-                  style={{
-                    display: "block",
-                    marginTop: "8px",
-                    fontSize: "12px",
-                    fontFamily: "Geist Mono, monospace",
-                    wordBreak: "break-all",
-                    color: "rgb(161, 161, 170)",
-                  }}
-                >
-                  {item.password}
-                </code>
-              </li>
-            ))}
-          </ul>
-        )}
       </div>
-
-      <style>{`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>
   )
 }
+
+/* ───────── styles ───────── */
+
+const container = {
+  width: 360,
+  minHeight: 420,
+  background: "rgb(24,24,27)",
+  color: "#fff",
+  padding: 16,
+  fontFamily: "Lato, system-ui, sans-serif",
+}
+
+const header = {
+  display: "flex",
+  justifyContent: "space-between",
+  marginBottom: 16,
+}
+
+const card = {
+  background: "rgb(39,39,42)",
+  border: "1px solid rgb(63,63,70)",
+  borderRadius: 8,
+  padding: 16,
+  display: "flex",
+  flexDirection: "column",
+  gap: 12,
+}
+
+const input = {
+  background: "rgb(24,24,27)",
+  border: "1px solid rgb(63,63,70)",
+  borderRadius: 6,
+  padding: "10px 12px",
+  color: "#fff",
+  fontSize: 14,
+}
+
+const primaryBtn = {
+  background: "rgb(255,151,29)",
+  border: "none",
+  borderRadius: 6,
+  padding: "10px 12px",
+  fontWeight: 600,
+  cursor: "pointer",
+}
+
+const secondaryBtn = {
+  background: "transparent",
+  border: "1px solid rgb(63,63,70)",
+  borderRadius: 6,
+  padding: "10px 12px",
+  color: "#fff",
+  cursor: "pointer",
+}
+
+const iconBtn = {
+  background: "none",
+  border: "none",
+  color: "#aaa",
+  cursor: "pointer",
+}
+
+const errorText = {
+  color: "rgb(239,68,68)",
+  fontSize: 12,
+}
+
+const passwordBox = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 8,
+  background: "rgb(24,24,27)",
+  border: "1px solid rgb(255,151,29)",
+  borderRadius: 8,
+  padding: "10px 12px",
+}
+
+const passwordText = {
+  fontSize: 14,
+  fontFamily: "Geist Mono, monospace",
+  letterSpacing: "0.5px",
+  color: "rgb(255,151,29)",
+  wordBreak: "break-all" as const,
+  flex: 1,
+}
+
+const copyBtn = {
+  background: "transparent",
+  border: "1px solid rgb(63,63,70)",
+  borderRadius: 6,
+  padding: "6px 10px",
+  fontSize: 12,
+  color: "#fff",
+  cursor: "pointer",
+  whiteSpace: "nowrap" as const,
+}
+
