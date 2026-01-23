@@ -1,37 +1,25 @@
 import { useEffect, useState } from "react"
-import { storeToken, getToken, clearToken } from "../../shared/authStorage"
-
-const AUTH_ORIGIN = "https://your-domain.com"
-const AUTH_URL = `${AUTH_ORIGIN}/auth/extension`
+import browser from "webextension-polyfill"
 
 export default function Popup() {
-  const [status, setStatus] = useState<
-    "idle" | "waiting" | "authenticated"
-  >("idle")
+  const [token, setToken] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
 
-  const [tokenPreview, setTokenPreview] = useState<string | null>(null)
-
-  // Load existing token on popup open
   useEffect(() => {
-    getToken().then((token) => {
-      if (token) {
-        setStatus("authenticated")
-        setTokenPreview(token.slice(0, 20) + "…")
-      }
+    // Load token on popup open
+    browser.storage.local.get("idToken").then(({ idToken }) => {
+      if (idToken) setToken(idToken)
     })
-  }, [])
 
-  // Listen for auth result from web page
-  useEffect(() => {
     const handler = async (event: MessageEvent) => {
-      if (event.origin !== AUTH_ORIGIN) return
-
-      if (event.data?.type === "EXTENSION_AUTH_SUCCESS") {
+      if (
+        event.origin === "http://localhost:3000" &&
+        event.data?.type === "EXTENSION_AUTH_SUCCESS"
+      ) {
         const token = event.data.token
-
-        await storeToken(token)
-        setStatus("authenticated")
-        setTokenPreview(token.slice(0, 20) + "…")
+        await browser.storage.local.set({ idToken: token })
+        setToken(token)
+        setLoading(false)
       }
     }
 
@@ -39,56 +27,58 @@ export default function Popup() {
     return () => window.removeEventListener("message", handler)
   }, [])
 
-  const startLogin = () => {
-    setStatus("waiting")
-
+  const login = () => {
+    setLoading(true)
     window.open(
-      AUTH_URL,
+      "http://localhost:3000/extension",
       "passwuts-auth",
       "width=500,height=600"
     )
   }
 
   const logout = async () => {
-    await clearToken()
-    setStatus("idle")
-    setTokenPreview(null)
+    // 1️⃣ Remove token
+    await browser.storage.local.remove("idToken")
+
+    // 2️⃣ Reset local state
+    setToken(null)
+
+    // Optional: reset UI flags
+    setLoading(false)
+  }
+
+  if (token) {
+    return (
+      <div style={{ padding: 16 }}>
+        <h3>Passwuts</h3>
+
+        <p style={{ color: "#16a34a" }}>✅ Logged in</p>
+
+        <button
+          onClick={logout}
+          style={{
+            marginTop: 12,
+            padding: "8px 12px",
+            background: "#dc2626",
+            color: "white",
+            border: "none",
+            borderRadius: 6,
+            cursor: "pointer",
+          }}
+        >
+          Log out
+        </button>
+      </div>
+    )
   }
 
   return (
-    <div
-      style={{
-        padding: 16,
-        width: 320,
-        fontFamily: "system-ui, sans-serif",
-      }}
-    >
+    <div style={{ padding: 16 }}>
       <h3>Passwuts</h3>
 
-      {status === "idle" && (
-        <button onClick={startLogin}>
-          Sign in
-        </button>
-      )}
-
-      {status === "waiting" && (
-        <p>Waiting for authentication…</p>
-      )}
-
-      {status === "authenticated" && (
-        <>
-          <p>✅ Authenticated</p>
-          <p style={{ fontSize: 12 }}>
-            Token received:
-            <br />
-            <code>{tokenPreview}</code>
-          </p>
-
-          <button onClick={logout}>
-            Log out
-          </button>
-        </>
-      )}
+      <button onClick={login} disabled={loading}>
+        {loading ? "Waiting for login…" : "Sign in"}
+      </button>
     </div>
   )
 }
