@@ -1,25 +1,43 @@
 import { useEffect, useState } from "react"
 import browser from "webextension-polyfill"
 
+type VaultItem = {
+  id: string
+  name: string
+  username?: string
+  password: string
+}
+
+type UIState =
+  | "loggedOut"
+  | "locked"
+  | "unlocking"
+  | "unlocked"
+  | "error"
+  | "needsSetup"
+
 export default function Popup() {
-  const [token, setToken] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [state, setState] = useState<UIState>("loggedOut")
+  const [password, setPassword] = useState("")
+  const [items, setItems] = useState<VaultItem[]>([])
+  const [error, setError] = useState<string | null>(null)
 
+  // Load auth state
   useEffect(() => {
-    // Load token on popup open
     browser.storage.local.get("idToken").then(({ idToken }) => {
-      if (idToken) setToken(idToken)
+      if (idToken) setState("locked")
     })
+  }, [])
 
+  // Receive auth success
+  useEffect(() => {
     const handler = async (event: MessageEvent) => {
       if (
-        event.origin === "http://localhost:3000" &&
+        event.origin === "https://your-domain.com" &&
         event.data?.type === "EXTENSION_AUTH_SUCCESS"
       ) {
-        const token = event.data.token
-        await browser.storage.local.set({ idToken: token })
-        setToken(token)
-        setLoading(false)
+        await browser.storage.local.set({ idToken: event.data.token })
+        setState("locked")
       }
     }
 
@@ -28,57 +46,116 @@ export default function Popup() {
   }, [])
 
   const login = () => {
-    setLoading(true)
     window.open(
-      "http://localhost:3000/extension",
+      "https://your-domain.com/auth/extension",
       "passwuts-auth",
       "width=500,height=600"
     )
   }
 
   const logout = async () => {
-    // 1️⃣ Remove token
+    await browser.runtime.sendMessage({ type: "VAULT_LOCK" })
     await browser.storage.local.remove("idToken")
 
-    // 2️⃣ Reset local state
-    setToken(null)
-
-    // Optional: reset UI flags
-    setLoading(false)
+    setItems([])
+    setPassword("")
+    setError(null)
+    setState("loggedOut")
   }
 
-  if (token) {
-    return (
-      <div style={{ padding: 16 }}>
-        <h3>Passwuts</h3>
+  const unlockVault = async () => {
+    setState("unlocking")
+    setError(null)
 
-        <p style={{ color: "#16a34a" }}>✅ Logged in</p>
+    const res = await browser.runtime.sendMessage({
+      type: "VERIFY_AND_UNLOCK_VAULT",
+      masterPassword: password,
+    })
 
-        <button
-          onClick={logout}
-          style={{
-            marginTop: 12,
-            padding: "8px 12px",
-            background: "#dc2626",
-            color: "white",
-            border: "none",
-            borderRadius: 6,
-            cursor: "pointer",
-          }}
-        >
-          Log out
-        </button>
-      </div>
-    )
+    if (res?.needsSetup) {
+      setState("needsSetup")
+      return
+    }
+
+    if (res?.error) {
+      setError(res.error)
+      setState("error")
+      return
+    }
+
+    const vault = await browser.runtime.sendMessage({
+      type: "FETCH_VAULT_ITEMS",
+    })
+
+    if (vault?.error) {
+      setError(vault.error)
+      setState("error")
+      return
+    }
+
+    setItems(vault.items)
+    setPassword("")
+    setState("unlocked")
   }
 
   return (
-    <div style={{ padding: 16 }}>
+    <div style={{ padding: 16, width: 320 }}>
       <h3>Passwuts</h3>
 
-      <button onClick={login} disabled={loading}>
-        {loading ? "Waiting for login…" : "Sign in"}
-      </button>
+      {state === "loggedOut" && (
+        <button onClick={login}>Sign in</button>
+      )}
+
+      {state === "locked" && (
+        <>
+          <input
+            type="password"
+            placeholder="Master password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          <button onClick={unlockVault}>Unlock Vault</button>
+        </>
+      )}
+
+      {state === "unlocking" && <p>Unlocking…</p>}
+
+      {state === "error" && (
+        <>
+          <p style={{ color: "red" }}>{error}</p>
+          <button onClick={() => setState("locked")}>Try again</button>
+        </>
+      )}
+
+      {state === "needsSetup" && (
+        <>
+          <p>Your vault is not set up yet.</p>
+          <a
+            href="https://your-domain.com"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Set up vault on Passwuts
+          </a>
+          <button onClick={() => setState("locked")}>Retry</button>
+        </>
+      )}
+
+      {state === "unlocked" && (
+        <>
+          <button onClick={logout}>Log out</button>
+
+          <ul>
+            {items.map((item) => (
+              <li key={item.id}>
+                <strong>{item.name}</strong>
+                <div>{item.username}</div>
+                <code>{item.password}</code>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
     </div>
   )
 }
