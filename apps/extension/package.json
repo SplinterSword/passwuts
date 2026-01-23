@@ -9,13 +9,14 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^5.1.2",
+    "lucide-react": "^0.454.0",
     "vite": "^7.3.1"
   },
   "dependencies": {
+    "@pm/crypto": "workspace:*",
     "firebase": "^12.8.0",
     "react": "19.2.0",
     "react-dom": "19.2.0",
-    "webextension-polyfill": "^0.12.0",
-    "@pm/crypto": "workspace:*"
+    "webextension-polyfill": "^0.12.0"
   }
 }
