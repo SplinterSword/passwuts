@@ -153,6 +153,63 @@ browser.runtime.onMessage.addListener(async (msg: any) => {
         return { success: true }
       }
 
+      case "AUTOFILL_CURRENT_SITE": {
+        const key = getVaultKey()
+        if (!key) {
+          return { error: "Vault is locked" }
+        }
+
+        const { idToken } = await browser.storage.local.get("idToken")
+        if (!idToken) {
+          return { error: "Not authenticated" }
+        }
+
+        const [tab] = await browser.tabs.query({
+          active: true,
+          currentWindow: true,
+        })
+
+        if (!tab?.url || !tab.id) {
+          return { error: "No active tab" }
+        }
+
+        const origin = new URL(tab.url).origin
+
+        // Fetch vault items
+        const res = await fetch("http://localhost:3000/api/vault", {
+          headers: {
+            Authorization: `Bearer ${idToken}`,
+          },
+        })
+
+        if (!res.ok) {
+          return { error: "Failed to fetch vault" }
+        }
+
+        const items = await res.json()
+
+        const match = items.find((item: any) => item.url === origin)
+        if (!match) {
+          return { error: "No saved password for this site" }
+        }
+
+        const password = await decryptPassword(
+          match.encryptedPassword,
+          match.iv,
+          key
+        )
+
+        await browser.tabs.sendMessage(tab.id, {
+          type: "AUTOFILL_CREDENTIALS",
+          payload: {
+            username: match.username ?? match.email,
+            password,
+          },
+        })
+
+        return { success: true }
+      }
+
       /**
        * LOCK VAULT
        */

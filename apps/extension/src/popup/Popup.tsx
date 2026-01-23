@@ -322,6 +322,22 @@ export default function Popup() {
             >
               {saving ? "Saving…" : "Save Password"}
             </button>
+
+            <button
+              onClick={async () => {
+                const res = await browser.runtime.sendMessage({
+                  type: "AUTOFILL_CURRENT_SITE",
+                })
+
+                if (res?.error) {
+                  setError(res.error)
+                }
+              }}
+              style={secondaryBtn}
+            >
+              Autofill on this site
+            </button>
+
           </>
         )}
       </div>
