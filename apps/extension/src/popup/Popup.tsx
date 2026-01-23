@@ -60,6 +60,19 @@ export default function Popup() {
     return () => window.removeEventListener("message", handler)
   }, [])
 
+  useEffect(() => {
+    const handler = (msg: any) => {
+      if (msg?.type === "SESSION_EXPIRED") {
+        setState("loggedOut")
+        setMasterPassword("")
+        setError("Session expired. Please sign in again.")
+      }
+    }
+
+    browser.runtime.onMessage.addListener(handler)
+    return () => browser.runtime.onMessage.removeListener(handler)
+  }, [])
+
   const login = () => {
     window.open(
       "http://localhost:3000/extension",
