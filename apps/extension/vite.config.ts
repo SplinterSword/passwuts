@@ -25,23 +25,23 @@ export default defineConfig({
     },
   ],
 
-  // Disable Vite's public dir (we manage assets manually)
+  // We fully control outputs
   publicDir: false,
 
   resolve: {
     alias: {
-      // 🔑 IMPORTANT: Resolve workspace crypto package to built output
-      "@pm/crypto": resolve(
-        __dirname,
-        "../../packages/crypto/dist"
-      ),
+      // Workspace crypto package → compiled output
+      "@pm/crypto": resolve(__dirname, "../../packages/crypto/dist"),
     },
   },
 
   build: {
     outDir: "dist",
     emptyOutDir: true,
+    
     target: "es2020",
+    sourcemap: false,
+    minify: true,
 
     rollupOptions: {
       input: {
@@ -51,9 +51,15 @@ export default defineConfig({
       },
 
       output: {
+        format: "es",
+
+        // Keep predictable paths for manifest
         entryFileNames: "[name]/index.js",
         chunkFileNames: "chunks/[name]-[hash].js",
         assetFileNames: "assets/[name]-[hash][extname]",
+
+        // Prevent Rollup from wrapping in IIFE
+        inlineDynamicImports: false,
       },
     },
   },
