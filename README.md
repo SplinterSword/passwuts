@@ -1,4 +1,4 @@
-# Passwuts – Password Generator and Vault
+# Passwuts – Password Manager (Web + Browser Extension)
 
 Passwuts is a modern, client-first password generator and vault built with Next.js App Router. It uses Firebase Authentication and Firestore with a secure, user-held encryption model: passwords are encrypted/decrypted in the browser using a key derived from the user's master password. The server never sees the plaintext passwords or the user's encryption key.
 
@@ -19,7 +19,19 @@ Passwuts is a modern, client-first password generator and vault built with Next.
 - **Auth/DB**: Firebase (client SDK) + Firebase Admin (server) + Firestore
 - **Validation**: zod, react-hook-form
 
-## Project Structure
+## Monorepo Structure
+This is a pnpm workspace with a web app and a browser extension.
+
+```
+apps/
+  web/                  -> Next.js app (primary web UI)
+  extension/            -> Browser extension (Chrome/Firefox) built with Vite
+packages/
+  crypto/               -> Shared crypto utilities (internal: @pm/crypto)
+  types/                -> Shared types
+```
+
+### apps/web (Next.js)
 ```
 app/
   page.tsx              -> redirects to /login
@@ -45,10 +57,23 @@ lib/
   firebaseAdmin.ts      -> Admin SDK init (service account envs)
   verify-admin-token.ts -> session cookie verification helper
   crypto.ts             -> deriveKey, encryptPassword, decryptPassword
-  vault.ts, firestore.ts, utils.ts
 store/
   authStore.ts, vaultStore.ts
 proxy.ts                -> middleware-like guard for /accounts (matcher config)
+```
+
+### apps/extension (Vite)
+```
+public/
+  manifest.chrome.json  -> MV3 manifest for Chromium
+  manifest.firefox.json -> Manifest for Firefox (background as scripts)
+src/
+  background/index.ts   -> background script entry
+  content/index.ts      -> content script entry
+  popup/*               -> popup UI
+shared/firebase.ts      -> Firebase client init (VITE_* envs)
+vite.config.ts          -> builds popup, background, content; copies manifest
+dist/                   -> build output (load as unpacked extension)
 ```
 
 ## Security Model
@@ -65,7 +90,9 @@ proxy.ts                -> middleware-like guard for /accounts (matcher config)
   - Firestore enabled (in Native mode)
 
 ## Environment Variables
-Create `.env.local` in the project root with the following keys.
+
+### Web app (apps/web)
+Create `apps/web/.env.local` with the following keys.
 
 Client (exposed):
 ```
@@ -87,27 +114,42 @@ FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY----
 ```
 
 Notes:
-- These values populate `lib/Firebase/initialize.ts` (client SDK) and `lib/firebaseAdmin.ts` (Admin SDK).
-- If deploying on a platform like Vercel, set these as project environment variables.
+- These values populate `apps/web/lib/Firebase/initialize.ts` (client SDK) and `apps/web/lib/firebaseAdmin.ts` (Admin SDK).
+- If deploying on a platform like Vercel, set these as project environment variables for the web app.
+
+### Browser extension (apps/extension)
+Create `apps/extension/.env` with the following keys (Vite format):
+
+```
+VITE_FIREBASE_API_KEY=
+VITE_FIREBASE_AUTH_DOMAIN=
+VITE_FIREBASE_PROJECT_ID=
+VITE_FIREBASE_STORAGE_BUCKET=
+VITE_FIREBASE_MESSAGING_SENDER_ID=
+VITE_FIREBASE_APP_ID=
+VITE_FIREBASE_MEASUREMENT_ID=
+```
 
 ## Getting Started (Local Dev)
+This is a pnpm workspace.
+
 1. Install dependencies:
    ```bash
-   npm install
+   pnpm install
    ```
-2. Add `.env.local` with the variables above.
-3. Run the dev server:
+2. Configure env files for the web app and optionally the extension as shown above.
+3. Run the web app dev server:
    ```bash
-   npm run dev
+   pnpm --filter web dev
    ```
-4. Open http://localhost:3000. You’ll be redirected to `/login` where Firebase Auth UI/flow should authenticate the user; on success the client posts the ID token to `/api/auth/login` which issues a long-lived session cookie.
+4. Open http://localhost:3000. You’ll be redirected to `/login`; on success the client posts the ID token to `/api/auth/login` which issues a long-lived session cookie.
 5. Navigate to `/accounts` to view and manage entries once the vault is initialized/unlocked.
 
 ## Common Scripts
-- `npm run dev` – start Next.js dev server
-- `npm run build` – build for production
-- `npm start` – run production build
-- `npm run lint` – run ESLint
+- `pnpm --filter web dev` – start Next.js dev server
+- `pnpm --filter web build` – build the web app for production
+- `pnpm --filter @pm/extension dev` – run Vite dev for the extension
+- `pnpm --filter @pm/extension build` – build the extension into `apps/extension/dist`
 
 ## Firebase Setup Tips
 - Enable Email/Password or your chosen providers in Firebase Authentication.
@@ -133,6 +175,54 @@ All `/api/vault*` routes require a valid `session` cookie. See `lib/verify-admin
 - Favorites sorting keeps starred items on top
 - Responsive grid and modern design via shadcn/ui + Tailwind v4
 
+## Browser Extension
+- The extension is in `apps/extension` and builds three entries: popup, background, and content scripts. `vite.config.ts` emits files into predictable folders (popup/, background/, content/).
+- The manifest is selected based on `BROWSER` env when building:
+  - `BROWSER=chrome pnpm --filter @pm/extension build` → copies `public/manifest.chrome.json` to `dist/manifest.json`
+  - `BROWSER=firefox pnpm --filter @pm/extension build` → copies `public/manifest.firefox.json` to `dist/manifest.json`
+
+### Load in Chrome (Developer Mode)
+1. Build: `BROWSER=chrome pnpm --filter @pm/extension build`
+2. Open chrome://extensions, enable Developer mode
+3. Click “Load unpacked” and select `apps/extension/dist`
+
+### Load in Firefox (about:debugging)
+1. Build: `BROWSER=firefox pnpm --filter @pm/extension build`
+2. Open about:debugging#/runtime/this-firefox
+3. Click “Load Temporary Add-on…” and select `apps/extension/dist/manifest.json`
+
+### Dev mode
+- You can run `pnpm --filter @pm/extension dev` to iterate; for full extension testing you’ll typically build and load the `dist` output.
+
+## Internal package: @pm/crypto
+Shared crypto utilities used by both web and extension. Uses the Web Crypto SubtleCrypto API.
+
+### API
+- `async deriveKey(masterPassword: string, salt: string): Promise<CryptoKey>`
+  - Derives an AES-GCM 256-bit key using PBKDF2 with SHA-256 and 100,000 iterations.
+  - Returns a `CryptoKey` with usages `encrypt` and `decrypt`.
+
+- `async encryptPassword(password: string, key: CryptoKey): Promise<{ encryptedPassword: string; iv: string }>`
+  - Encrypts the UTF-8 `password` with `AES-GCM` using a random 12-byte IV.
+  - Returns Base64 strings: `encryptedPassword` and `iv`.
+
+- `async decryptPassword(encryptedPassword: string, iv: string, key: CryptoKey): Promise<string>`
+  - Decrypts Base64-encoded ciphertext with `AES-GCM` and the provided IV.
+  - Throws if authentication fails (wrong key/iv or corrupted data).
+
+### Usage example
+```ts
+import { deriveKey, encryptPassword, decryptPassword } from "@pm/crypto";
+
+const key = await deriveKey(masterPassword, userSalt);
+const { encryptedPassword, iv } = await encryptPassword("s3cret", key);
+const plain = await decryptPassword(encryptedPassword, iv, key);
+```
+
+### Notes
+- Web Crypto is available in modern browsers and recent Node runtimes. For Node, ensure a compatible version (v18+ recommended) and a Web Crypto global is available.
+- Ciphertext and IV are Base64 strings for transport/storage convenience.
+
 ## Deployment
-- Build with `npm run build` and run `npm start`, or deploy to Vercel.
-- Set the same environment variables in your hosting platform.
+- Build the web app with `pnpm --filter web build` and deploy to your host (e.g., Vercel). Set the environment variables in your hosting platform.
+- Build the extension as described above and load/publish per the target browser store’s guidelines.
