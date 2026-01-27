@@ -33,8 +33,6 @@ export default function Popup() {
   const [customPassword, setCustomPassword] = useState("")
   const [passwordWarning, setPasswordWarning] = useState<string | null>(null)
 
-
-
   // Fetch State
   const [fetchedCreds, setFetchedCreds] = useState<{
     name: string
@@ -42,17 +40,21 @@ export default function Popup() {
     email?: string
     password: string
   } | null>(null)
-
   const [fetchingCreds, setFetchingCreds] = useState(false)
   const [noCredsForSite, setNoCredsForSite] = useState(false)
-
-
 
   const [formErrors, setFormErrors] = useState<{
     websiteName?: string
     websiteUrl?: string
     email?: string
   }>({})
+
+  useEffect(() => {
+    console.log("[Passwuts Extension]");
+    console.log("ENV MODE:", import.meta.env.MODE);
+    console.log("APP URL:", __APP_URL__);
+  }, []);
+
 
   // Load auth state
   useEffect(() => {
@@ -69,7 +71,7 @@ export default function Popup() {
   useEffect(() => {
     const handler = async (event: MessageEvent) => {
       if (
-        event.origin === "http://localhost:3000" &&
+        event.origin === __APP_URL__ &&
         event.data?.type === "EXTENSION_AUTH_SUCCESS" &&
         event.data.token
       ) {
@@ -97,7 +99,7 @@ export default function Popup() {
 
   const login = () => {
     window.open(
-      "http://localhost:3000/extension",
+      `${__APP_URL__}/extension`,
       "passwuts-auth",
       "width=500,height=600"
     )
@@ -143,6 +145,28 @@ export default function Popup() {
 
     setMasterPassword("")
     setState("unlocked")
+  }
+
+  const checkPasswordStrength = (password: string) => {
+    if (!password) {
+      setPasswordWarning(null)
+      return
+    }
+
+    let strength = 0
+    if (password.length >= 12) strength++
+    if (password.length >= 16) strength++
+    if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength++
+    if (/\d/.test(password)) strength++
+    if (/[^a-zA-Z0-9]/.test(password)) strength++
+
+    if (strength <= 2) {
+      setPasswordWarning("This password may be weak")
+    } else if (strength <= 4) {
+      setPasswordWarning("This password is acceptable, but could be stronger")
+    } else {
+      setPasswordWarning(null) // strong
+    }
   }
 
   const generatePassword = async () => {
@@ -307,7 +331,7 @@ export default function Popup() {
           <>
             <p style={{ color: "#aaa" }}>Vault not set up.</p>
             <button
-              onClick={() => window.open("http://localhost:3000", "_blank")}
+              onClick={() => window.open(`${__APP_URL__}`, "_blank")}
               style={primaryBtn}
             >
               Set up vault
@@ -431,24 +455,6 @@ export default function Popup() {
                   </div>
                 )}
               </>
-            )}
-
-
-            {generatedPassword && (
-              <div style={passwordBox}>
-                <code style={passwordText}>{generatedPassword}</code>
-
-                <button
-                  onClick={async () => {
-                    await navigator.clipboard.writeText(generatedPassword)
-                    setCopied(true)
-                    setTimeout(() => setCopied(false), 1500)
-                  }}
-                  style={copyBtn}
-                >
-                  {copied ? "Copied!" : "Copy"}
-                </button>
-              </div>
             )}
 
             <button

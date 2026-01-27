@@ -24,7 +24,7 @@ browser.runtime.onMessage.addListener(async (msg: any) => {
         }
 
         const metaRes = await fetch(
-          "http://localhost:3000/api/vault/meta/exists",
+          `${__APP_URL__}/api/vault/meta/exists`,
           {
             headers: { Authorization: `Bearer ${idToken}` },
           }
@@ -99,7 +99,7 @@ browser.runtime.onMessage.addListener(async (msg: any) => {
 
         const { encryptedPassword, iv } = await encryptPassword(password, key)
 
-        const res = await fetch("http://localhost:3000/api/vault", {
+        const res = await fetch(`${__APP_URL__}/api/vault`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -133,7 +133,7 @@ browser.runtime.onMessage.addListener(async (msg: any) => {
 
         const origin = new URL(tab.url).origin
 
-        const res = await fetch("http://localhost:3000/api/vault", {
+        const res = await fetch(`${__APP_URL__}/api/vault`, {
           headers: { Authorization: `Bearer ${idToken}` },
         })
 
