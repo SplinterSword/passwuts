@@ -26,6 +26,19 @@ export default function Popup() {
   const [saving, setSaving] = useState(false)
   const [copied, setCopied] = useState(false)
 
+  // Fetch State
+  const [fetchedCreds, setFetchedCreds] = useState<{
+    name: string
+    username?: string
+    email?: string
+    password: string
+  } | null>(null)
+
+  const [fetchingCreds, setFetchingCreds] = useState(false)
+  const [noCredsForSite, setNoCredsForSite] = useState(false)
+
+
+
   const [formErrors, setFormErrors] = useState<{
     websiteName?: string
     websiteUrl?: string
@@ -191,6 +204,36 @@ export default function Popup() {
     setFormErrors({})
   }
 
+  const fetchCredentials = async () => {
+    setFetchingCreds(true)
+    setError(null)
+    setFetchedCreds(null)
+    setNoCredsForSite(false)
+
+    const res = await browser.runtime.sendMessage({
+      type: "GET_CREDENTIALS_FOR_SITE",
+    })
+
+    setFetchingCreds(false)
+
+    if (res?.error) {
+      setError(res.error)
+      return
+    }
+
+    if (!res?.found) {
+      setNoCredsForSite(true)
+      return
+    }
+
+    setFetchedCreds({
+      name: res.name,
+      username: res.username,
+      email: res.email,
+      password: res.password,
+    })
+  }
+
   const isFormComplete =
     websiteName.trim() &&
     websiteUrl.trim() &&
@@ -337,19 +380,72 @@ export default function Popup() {
             </button>
 
             <button
-              onClick={async () => {
-                const res = await browser.runtime.sendMessage({
-                  type: "AUTOFILL_CURRENT_SITE",
-                })
-
-                if (res?.error) {
-                  setError(res.error)
-                }
-              }}
+              onClick={fetchCredentials}
               style={secondaryBtn}
             >
-              Autofill on this site
+              {fetchingCreds ? "Checking…" : "Get Credentials for this site"}
             </button>
+
+            {fetchedCreds && (
+              <div style={passwordBox}>
+                <div style={{ flex: 1 }}>
+                  {/* Site name */}
+                  <div style={{ fontWeight: 600, marginBottom: 6 }}>
+                    {fetchedCreds.name}
+                  </div>
+
+                  {/* Username / Email */}
+                  {fetchedCreds.username && (
+                    <div style={{ fontSize: 12, color: "#aaa", marginBottom: 4 }}>
+                      Username: {fetchedCreds.username}
+                    </div>
+                  )}
+
+                  {fetchedCreds.email && (
+                    <div style={{ fontSize: 12, color: "#aaa", marginBottom: 6 }}>
+                      Email: {fetchedCreds.email}
+                    </div>
+                  )}
+
+                  {/* Password */}
+                  <code style={passwordText}>
+                    {fetchedCreds.password}
+                  </code>
+                </div>
+
+                <button
+                  onClick={async () => {
+                    await navigator.clipboard.writeText(fetchedCreds.password)
+                    setCopied(true)
+                    setTimeout(() => setCopied(false), 1500)
+                  }}
+                  style={copyBtn}
+                >
+                  {copied ? "Copied!" : "Copy"}
+                </button>
+              </div>
+            )}
+
+            {noCredsForSite && (
+              <div
+                style={{
+                  background: "rgb(24,24,27)",
+                  border: "1px dashed rgb(63,63,70)",
+                  borderRadius: 8,
+                  padding: "12px",
+                  color: "#aaa",
+                  fontSize: 13,
+                }}
+              >
+                <div style={{ marginBottom: 8 }}>
+                  No credentials found for this website.
+                </div>
+
+                <div style={{ fontSize: 12 }}>
+                  Generate a password below to securely save one.
+                </div>
+              </div>
+            )}
 
           </>
         )}

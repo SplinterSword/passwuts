@@ -2,7 +2,7 @@ import browser from "webextension-polyfill"
 import { deriveKey, decryptPassword, encryptPassword } from "@pm/crypto"
 import { setVaultKey, getVaultKey, clearVaultKey } from "../../shared/vaultStore"
 import { generateSecurePassword } from "./passwordGenerator"
-import { isTokenExpired, checkAuthToken } from "./tokenHelpers"   
+import { isTokenExpired, checkAuthToken } from "./tokenHelpers"
 
 setInterval(checkAuthToken, 60_000)
 checkAuthToken()
@@ -121,23 +121,15 @@ browser.runtime.onMessage.addListener(async (msg: any) => {
         return { success: true }
       }
 
-      case "AUTOFILL_CURRENT_SITE": {
+      case "GET_CREDENTIALS_FOR_SITE": {
         const key = getVaultKey()
-        if (!key) return { error: "Vault is locked" }
+        if (!key) return { error: "Vault locked" }
 
         const { idToken } = await browser.storage.local.get("idToken")
-        if (!idToken || isTokenExpired(idToken)) {
-          await browser.storage.local.remove("idToken")
-          clearVaultKey()
-          return { error: "Session expired. Please sign in again." }
-        }
+        if (!idToken) return { error: "Not authenticated" }
 
-        const [tab] = await browser.tabs.query({
-          active: true,
-          currentWindow: true,
-        })
-
-        if (!tab?.url || !tab.id) return { error: "No active tab" }
+        const [tab] = await browser.tabs.query({ active: true, currentWindow: true })
+        if (!tab?.url) return { found: false }
 
         const origin = new URL(tab.url).origin
 
@@ -149,7 +141,8 @@ browser.runtime.onMessage.addListener(async (msg: any) => {
 
         const items = await res.json()
         const match = items.find((i: any) => i.url === origin)
-        if (!match) return { error: "No saved password for this site" }
+
+        if (!match) return { found: false }
 
         const password = await decryptPassword(
           match.encryptedPassword,
@@ -157,16 +150,15 @@ browser.runtime.onMessage.addListener(async (msg: any) => {
           key
         )
 
-        await browser.tabs.sendMessage(tab.id, {
-          type: "AUTOFILL_CREDENTIALS",
-          payload: {
-            username: match.username ?? match.email,
-            password,
-          },
-        })
-
-        return { success: true }
+        return {
+          found: true,
+          name: match.name,
+          username: match.username,
+          email: match.email,
+          password,
+        }
       }
+
 
       case "VAULT_LOCK": {
         clearVaultKey()

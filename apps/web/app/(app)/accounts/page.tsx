@@ -90,6 +90,7 @@ export default function AccountsPage() {
               id: item.id,
               name: item.name,
               url: item.url,
+              email: item.email,
               username: item.username ?? item.email,
               password,
               hasWarning: item.hasWarning,
@@ -303,6 +304,25 @@ export default function AccountsPage() {
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
+                    </div>
+                  </div>
+
+                  {/* Email */}
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between bg-secondary/50 rounded px-3 py-2 gap-2">
+                      <span className="text-sm text-foreground font-mono break-all">{account.email}</span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-muted-foreground hover:text-foreground shrink-0"
+                        onClick={() => copyToClipboard(account.email, `email-${account.id}`)}
+                      >
+                        {copiedItem === `email-${account.id}` ? (
+                          <Check className="h-3 w-3 text-primary" />
+                        ) : (
+                          <Copy className="h-3 w-3" />
+                        )}
+                      </Button>
                     </div>
                   </div>
 
