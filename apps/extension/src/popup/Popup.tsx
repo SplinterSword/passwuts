@@ -25,6 +25,11 @@ export default function Popup() {
   const [generatedPassword, setGeneratedPassword] = useState("")
   const [saving, setSaving] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [copiedField, setCopiedField] = useState<
+    "password" | "username" | "email" | null
+  >(null)
+
 
   // Fetch State
   const [fetchedCreds, setFetchedCreds] = useState<{
@@ -234,6 +239,13 @@ export default function Popup() {
     })
   }
 
+  const copyValue = async (value: string, field: "password" | "username" | "email") => {
+    await navigator.clipboard.writeText(value)
+    setCopiedField(field)
+    setTimeout(() => setCopiedField(null), 1500)
+  }
+
+
   const isFormComplete =
     websiteName.trim() &&
     websiteUrl.trim() &&
@@ -389,43 +401,86 @@ export default function Popup() {
             {fetchedCreds && (
               <div style={passwordBox}>
                 <div style={{ flex: 1 }}>
-                  {/* Site name */}
+                  {/* Site */}
                   <div style={{ fontWeight: 600, marginBottom: 6 }}>
                     {fetchedCreds.name}
                   </div>
 
-                  {/* Username / Email */}
+                  {/* Username */}
                   {fetchedCreds.username && (
-                    <div style={{ fontSize: 12, color: "#aaa", marginBottom: 4 }}>
-                      Username: {fetchedCreds.username}
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        fontSize: 12,
+                        color: "#aaa",
+                        marginBottom: 4,
+                      }}
+                    >
+                      <span>Username: {fetchedCreds.username}</span>
+                      <button
+                        onClick={() => copyValue(fetchedCreds.username!, "username")}
+                        style={copyBtn}
+                      >
+                        {copiedField === "username" ? "Copied!" : "Copy"}
+                      </button>
                     </div>
                   )}
 
+                  {/* Email */}
                   {fetchedCreds.email && (
-                    <div style={{ fontSize: 12, color: "#aaa", marginBottom: 6 }}>
-                      Email: {fetchedCreds.email}
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        fontSize: 12,
+                        color: "#aaa",
+                        marginBottom: 8,
+                      }}
+                    >
+                      <span>Email: {fetchedCreds.email}</span>
+                      <button
+                        onClick={() => copyValue(fetchedCreds.email!, "email")}
+                        style={copyBtn}
+                      >
+                        {copiedField === "email" ? "Copied!" : "Copy"}
+                      </button>
                     </div>
                   )}
 
                   {/* Password */}
-                  <code style={passwordText}>
-                    {fetchedCreds.password}
-                  </code>
-                </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
+                  >
+                    <code style={passwordText}>
+                      {showPassword
+                        ? fetchedCreds.password
+                        : "•".repeat(fetchedCreds.password.length)}
+                    </code>
 
-                <button
-                  onClick={async () => {
-                    await navigator.clipboard.writeText(fetchedCreds.password)
-                    setCopied(true)
-                    setTimeout(() => setCopied(false), 1500)
-                  }}
-                  style={copyBtn}
-                >
-                  {copied ? "Copied!" : "Copy"}
-                </button>
+                    <button
+                      onClick={() => setShowPassword((p) => !p)}
+                      style={copyBtn}
+                    >
+                      {showPassword ? "Hide" : "Show"}
+                    </button>
+
+                    <button
+                      onClick={() => copyValue(fetchedCreds.password, "password")}
+                      style={copyBtn}
+                    >
+                      {copiedField === "password" ? "Copied!" : "Copy"}
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
-
             {noCredsForSite && (
               <div
                 style={{
