@@ -2,6 +2,7 @@ export type VaultAccount = {
   id: string
   name: string
   url: string
+  email: string
   username?: string
   password: string
   hasWarning: boolean

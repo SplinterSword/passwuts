@@ -41,7 +41,7 @@ function AccountsSkeleton() {
 
 export default function AccountsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [visiblePasswords, setVisiblePasswords] = useState<Set<number>>(new Set())
+  const [visiblePasswords, setVisiblePasswords] = useState<Set<any>>(new Set())
   const [copiedItem, setCopiedItem] = useState<string | null>(null)
   const [accounts, setAccounts] = useState<VaultAccount[]>([])
   const isUnlocked = useVaultStore((s) => s.isUnlocked)
@@ -49,7 +49,7 @@ export default function AccountsPage() {
   const refreshCounter = useVaultStore((s) => s.refreshCounter)
   const [loading, setLoading] = useState(true)
   const [favoriteLoading, setFavoriteLoading] = useState<Set<number>>(new Set())
-  const [openMenuId, setOpenMenuId] = useState<number | null>(null)
+  const [openMenuId, setOpenMenuId] = useState<String | null>(null)
   const [deleteLoading, setDeleteLoading] = useState<Set<number>>(new Set())
 
   useEffect(() => {
@@ -121,7 +121,7 @@ export default function AccountsPage() {
   }, [isUnlocked, cryptoKey, refreshCounter])
 
 
-  const togglePasswordVisibility = (accountId: number) => {
+  const togglePasswordVisibility = (accountId: any) => {
     setVisiblePasswords((prev) => {
       const newSet = new Set(prev)
       if (newSet.has(accountId)) {
@@ -196,8 +196,8 @@ export default function AccountsPage() {
     }
   }
 
-  const deleteAccount = async (accountId: number) => {
-    setDeleteLoading((prev) => new Set(prev).add(accountId))
+  const deleteAccount = async (accountId: string) => {
+    setDeleteLoading((prev) => new Set(prev).add(parseInt(accountId)))
     setOpenMenuId(null)
     setLoading(true)
 
@@ -213,7 +213,7 @@ export default function AccountsPage() {
     } finally {
       setDeleteLoading((prev) => {
         const newSet = new Set(prev)
-        newSet.delete(accountId)
+        newSet.delete(parseInt(accountId))
         return newSet
       })
       setLoading(false)
@@ -283,7 +283,7 @@ export default function AccountsPage() {
                               }`}
                           />
                         </Button>
-                        <DropdownMenu open={openMenuId === account.id} onOpenChange={(open : number) => setOpenMenuId(open ? account.id : null)}>
+                        <DropdownMenu open={openMenuId === account.id} onOpenChange={(open : boolean) => setOpenMenuId(open ? account.id : null)}>
                           <DropdownMenuTrigger asChild>
                           <Button
                             variant="ghost"
@@ -297,10 +297,10 @@ export default function AccountsPage() {
                           <DropdownMenuItem
                             className="text-destructive focus:text-destructive cursor-pointer hover:bg-secondary"
                             onClick={() => deleteAccount(account.id)}
-                            disabled={deleteLoading.has(account.id)}
+                            disabled={deleteLoading.has(parseInt(account.id))}
                           >
                             <Trash2 className="h-4 w-4 mr-2" />
-                            {deleteLoading.has(account.id) ? "Deleting..." : "Delete"}
+                            {deleteLoading.has(parseInt(account.id)) ? "Deleting..." : "Delete"}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -334,7 +334,7 @@ export default function AccountsPage() {
                         variant="ghost"
                         size="icon"
                         className="h-6 w-6 text-muted-foreground hover:text-foreground shrink-0"
-                        onClick={() => copyToClipboard(account.username, `username-${account.id}`)}
+                        onClick={() => copyToClipboard(account.username || "", `username-${account.id}`)}
                       >
                         {copiedItem === `username-${account.id}` ? (
                           <Check className="h-3 w-3 text-primary" />

@@ -10,8 +10,8 @@ export default function AppLayout({
 }: {
   children: React.ReactNode
 }) {
-  const user = useAuthStore((s) => s.user)
-  const loading = useAuthStore((s) => s.loading)
+  const user = useAuthStore((s : any) => s.user)
+  const loading = useAuthStore((s : any) => s.loading)
   const router = useRouter()
 
   // 🔐 Auth guard

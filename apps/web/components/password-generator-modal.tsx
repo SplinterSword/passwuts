@@ -148,8 +148,8 @@ export function PasswordGeneratorModal({ open, onOpenChange }: PasswordGenerator
 
     setGeneratedPassword(password)
     calculateStrength(password)
-    if (formErrors.generatedPassword) {
-      setFormErrors((prev) => ({ ...prev, generatedPassword: undefined }))
+    if (formErrors.password) {
+      setFormErrors((prev) => ({ ...prev, password: undefined }))
     }
   }
 
@@ -556,8 +556,8 @@ export function PasswordGeneratorModal({ open, onOpenChange }: PasswordGenerator
                   </Button>
                 </div>
               </div>
-              {formErrors.generatedPassword && (
-                <p className="text-xs text-destructive">{formErrors.generatedPassword}</p>
+              {formErrors.password && (
+                <p className="text-xs text-destructive">{formErrors.password}</p>
               )}
 
               <div className="flex items-center gap-2">
