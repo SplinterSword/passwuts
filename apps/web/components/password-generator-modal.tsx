@@ -18,7 +18,7 @@ const passwordFormSchema = z.object({
   websiteUrl: z.string().url("Please enter a valid URL"),
   username: z.string().max(255, "Username is too long").optional(),
   email: z.string().email("Please enter a valid email address"),
-  generatedPassword: z.string().min(1, "Please generate a password first"),
+  password: z.string().min(1, "Password is required"),
 })
 
 type PasswordFormData = z.infer<typeof passwordFormSchema>
@@ -47,6 +47,10 @@ export function PasswordGeneratorModal({ open, onOpenChange }: PasswordGenerator
   const user = useAuthStore((s) => s.user)
   const { cryptoKey, isUnlocked } = useVaultStore()
   const triggerRefresh = useVaultStore((s) => s.triggerRefresh)
+  const [useCustomPassword, setUseCustomPassword] = useState(false)
+  const [customPassword, setCustomPassword] = useState("")
+  const [customPasswordWarning, setCustomPasswordWarning] = useState<string | null>(null)
+
 
 
   const getSecureRandomInt = (max: number): number => {
@@ -162,6 +166,17 @@ export function PasswordGeneratorModal({ open, onOpenChange }: PasswordGenerator
     else setPasswordStrength("strong")
   }
 
+  const checkCustomPasswordStrength = (password: string) => {
+    if (password.length < 12) {
+      setCustomPasswordWarning("This password may be weak")
+    } else {
+      setCustomPasswordWarning(null)
+    }
+
+    calculateStrength(password)
+  }
+
+
   const copyToClipboard = () => {
     navigator.clipboard.writeText(generatedPassword)
   }
@@ -172,7 +187,7 @@ export function PasswordGeneratorModal({ open, onOpenChange }: PasswordGenerator
       websiteUrl,
       username: username || undefined,
       email,
-      generatedPassword,
+      password: useCustomPassword ? customPassword : generatedPassword,
     }
 
     const result = passwordFormSchema.safeParse(formData)
@@ -201,9 +216,11 @@ export function PasswordGeneratorModal({ open, onOpenChange }: PasswordGenerator
     }
 
     try {
+      const password = result.data.password
+
       // Encrypt password using vault key
       const { encryptedPassword, iv } = await encryptPassword(
-        generatedPassword,
+        password,
         cryptoKey
       )
 
@@ -246,8 +263,11 @@ export function PasswordGeneratorModal({ open, onOpenChange }: PasswordGenerator
   }
 
 
-
-  const isFormValid = websiteName && websiteUrl && email && generatedPassword
+  const isFormValid =
+    websiteName &&
+    websiteUrl &&
+    email &&
+    (useCustomPassword ? customPassword : generatedPassword)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -346,100 +366,160 @@ export function PasswordGeneratorModal({ open, onOpenChange }: PasswordGenerator
             </div>
           </div>
 
-          {/* Password Settings Section */}
-          <div className="space-y-4 pt-4 border-t border-border">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password-length" className="text-sm font-medium text-foreground">
-                  Password Length
-                </Label>
-                <span className="text-sm font-semibold text-primary">{passwordLength[0]}</span>
-              </div>
-              <Slider
-                id="password-length"
-                min={8}
-                max={64}
-                step={1}
-                value={passwordLength}
-                onValueChange={setPasswordLength}
-                className="w-full"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 pt-2">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="lowercase"
-                  checked={includeLowercase}
-                  onCheckedChange={(checked) => setIncludeLowercase(checked as boolean)}
-                  className="border-border data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                />
-                <Label htmlFor="lowercase" className="text-sm text-foreground cursor-pointer">
-                  Include lowercase letters
-                </Label>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="uppercase"
-                  checked={includeUppercase}
-                  onCheckedChange={(checked) => setIncludeUppercase(checked as boolean)}
-                  className="border-border data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                />
-                <Label htmlFor="uppercase" className="text-sm text-foreground cursor-pointer">
-                  Include uppercase letters
-                </Label>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="numbers"
-                  checked={includeNumbers}
-                  onCheckedChange={(checked) => setIncludeNumbers(checked as boolean)}
-                  className="border-border data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                />
-                <Label htmlFor="numbers" className="text-sm text-foreground cursor-pointer">
-                  Include numbers
-                </Label>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="symbols"
-                  checked={includeSymbols}
-                  onCheckedChange={(checked) => setIncludeSymbols(checked as boolean)}
-                  className="border-border data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                />
-                <Label htmlFor="symbols" className="text-sm text-foreground cursor-pointer">
-                  Include symbols
-                </Label>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="spaces"
-                  checked={allowSpaces}
-                  onCheckedChange={(checked) => setAllowSpaces(checked as boolean)}
-                  className="border-border data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                />
-                <Label htmlFor="spaces" className="text-sm text-foreground cursor-pointer">
-                  Allow spaces
-                </Label>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="exclude-similar"
-                  checked={excludeSimilar}
-                  onCheckedChange={(checked) => setExcludeSimilar(checked as boolean)}
-                  className="border-border data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                />
-                <Label htmlFor="exclude-similar" className="text-sm text-foreground cursor-pointer">
-                  Exclude similar characters
-                </Label>
-              </div>
-            </div>
+          {/* Toggle Custom and Generated Section */}
+          <div className="flex items-center gap-2 pt-2">
+            <Checkbox
+              id="custom-password"
+              checked={useCustomPassword}
+              onCheckedChange={(checked: any) => {
+                setUseCustomPassword(checked as boolean)
+                setGeneratedPassword("")
+                setCustomPassword("")
+                setCustomPasswordWarning(null)
+              }}
+            />
+            <Label htmlFor="custom-password" className="text-sm cursor-pointer">
+              Enter password manually
+            </Label>
           </div>
+
+
+          {/* Password Settings Section */}
+          {!useCustomPassword && (
+            <div className="space-y-4 pt-4 border-t border-border">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password-length" className="text-sm font-medium text-foreground">
+                    Password Length
+                  </Label>
+                  <span className="text-sm font-semibold text-primary">{passwordLength[0]}</span>
+                </div>
+                <Slider
+                  id="password-length"
+                  min={8}
+                  max={64}
+                  step={1}
+                  value={passwordLength}
+                  onValueChange={setPasswordLength}
+                  className="w-full"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 pt-2">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="lowercase"
+                    checked={includeLowercase}
+                    onCheckedChange={(checked) => setIncludeLowercase(checked as boolean)}
+                    className="border-border data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                  />
+                  <Label htmlFor="lowercase" className="text-sm text-foreground cursor-pointer">
+                    Include lowercase letters
+                  </Label>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="uppercase"
+                    checked={includeUppercase}
+                    onCheckedChange={(checked) => setIncludeUppercase(checked as boolean)}
+                    className="border-border data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                  />
+                  <Label htmlFor="uppercase" className="text-sm text-foreground cursor-pointer">
+                    Include uppercase letters
+                  </Label>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="numbers"
+                    checked={includeNumbers}
+                    onCheckedChange={(checked) => setIncludeNumbers(checked as boolean)}
+                    className="border-border data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                  />
+                  <Label htmlFor="numbers" className="text-sm text-foreground cursor-pointer">
+                    Include numbers
+                  </Label>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="symbols"
+                    checked={includeSymbols}
+                    onCheckedChange={(checked) => setIncludeSymbols(checked as boolean)}
+                    className="border-border data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                  />
+                  <Label htmlFor="symbols" className="text-sm text-foreground cursor-pointer">
+                    Include symbols
+                  </Label>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="spaces"
+                    checked={allowSpaces}
+                    onCheckedChange={(checked) => setAllowSpaces(checked as boolean)}
+                    className="border-border data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                  />
+                  <Label htmlFor="spaces" className="text-sm text-foreground cursor-pointer">
+                    Allow spaces
+                  </Label>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="exclude-similar"
+                    checked={excludeSimilar}
+                    onCheckedChange={(checked: any) => setExcludeSimilar(checked as boolean)}
+                    className="border-border data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                  />
+                  <Label htmlFor="exclude-similar" className="text-sm text-foreground cursor-pointer">
+                    Exclude similar characters
+                  </Label>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Custom Password Section */}
+          {useCustomPassword && (
+            <div className="space-y-3 pt-4 border-t border-border">
+              <Label className="text-sm font-medium text-foreground">
+                Custom Password
+              </Label>
+
+              <div className="relative">
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  value={customPassword}
+                  onChange={(e) => {
+                    setCustomPassword(e.target.value)
+                    checkCustomPasswordStrength(e.target.value)
+                  }}
+                  placeholder="Enter your password"
+                  className="pr-16 bg-input border-border text-foreground font-mono"
+                />
+
+                <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="h-8 w-8"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
+
+              {customPasswordWarning && (
+                <p className="text-xs text-yellow-500">
+                  ⚠️ {customPasswordWarning}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Generated Password Section */}
           {generatedPassword && (
@@ -504,12 +584,14 @@ export function PasswordGeneratorModal({ open, onOpenChange }: PasswordGenerator
 
           {/* Actions */}
           <div className="space-y-3 pt-4">
-            <Button
-              onClick={generatePassword}
-              className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
-            >
-              Generate Password
-            </Button>
+            {!useCustomPassword && (
+              <Button
+                onClick={generatePassword}
+                className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
+              >
+                Generate Password
+              </Button>
+            )}
             <Button
               onClick={handleSavePassword}
               disabled={!isFormValid}

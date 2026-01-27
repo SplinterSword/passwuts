@@ -677,4 +677,3 @@ const copyBtn = {
   cursor: "pointer",
   whiteSpace: "nowrap" as const,
 }
-
