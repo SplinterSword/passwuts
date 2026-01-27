@@ -29,6 +29,10 @@ export default function Popup() {
   const [copiedField, setCopiedField] = useState<
     "password" | "username" | "email" | null
   >(null)
+  const [useCustomPassword, setUseCustomPassword] = useState(false)
+  const [customPassword, setCustomPassword] = useState("")
+  const [passwordWarning, setPasswordWarning] = useState<string | null>(null)
+
 
 
   // Fetch State
@@ -148,6 +152,9 @@ export default function Popup() {
 
     if (res?.password) {
       setGeneratedPassword(res.password)
+      setUseCustomPassword(false)
+      setCustomPassword("")
+      setPasswordWarning(null)
     }
   }
 
@@ -179,7 +186,11 @@ export default function Popup() {
   }
 
   const savePassword = async () => {
-    if (!generatedPassword) return
+    const passwordToSave = useCustomPassword
+      ? customPassword
+      : generatedPassword
+
+    if (!passwordToSave) return
     if (!validateForm()) return
 
     setSaving(true)
@@ -192,7 +203,7 @@ export default function Popup() {
         url: websiteUrl,
         username,
         email,
-        password: generatedPassword,
+        password: passwordToSave,
       },
     })
 
@@ -250,7 +261,7 @@ export default function Popup() {
     websiteName.trim() &&
     websiteUrl.trim() &&
     email.trim() &&
-    generatedPassword
+    (useCustomPassword ? customPassword : generatedPassword)
 
   return (
     <div style={container}>
@@ -358,9 +369,70 @@ export default function Popup() {
             />
             {formErrors.email && <span style={errorText}>{formErrors.email}</span>}
 
-            <button onClick={generatePassword} style={secondaryBtn}>
-              Generate Password
+            <button
+              onClick={() => {
+                setUseCustomPassword((p) => !p)
+                setGeneratedPassword("")
+                setPasswordWarning(null)
+              }}
+              style={secondaryBtn}
+            >
+              {useCustomPassword ? "Use generated password" : "Enter password manually"}
             </button>
+
+            {useCustomPassword ? (
+              <>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={customPassword}
+                  onChange={(e) => {
+                    setCustomPassword(e.target.value)
+                    checkPasswordStrength(e.target.value)
+                  }}
+                  placeholder="Enter your password"
+                  style={input}
+                />
+
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    onClick={() => setShowPassword((p) => !p)}
+                    style={secondaryBtn}
+                  >
+                    {showPassword ? "Hide" : "Show"}
+                  </button>
+                </div>
+
+                {passwordWarning && (
+                  <span style={{ color: "rgb(251,191,36)", fontSize: 12 }}>
+                    ⚠️ {passwordWarning}
+                  </span>
+                )}
+              </>
+            ) : (
+              <>
+                <button onClick={generatePassword} style={secondaryBtn}>
+                  Generate Password
+                </button>
+
+                {generatedPassword && (
+                  <div style={passwordBox}>
+                    <code style={passwordText}>{generatedPassword}</code>
+
+                    <button
+                      onClick={async () => {
+                        await navigator.clipboard.writeText(generatedPassword)
+                        setCopied(true)
+                        setTimeout(() => setCopied(false), 1500)
+                      }}
+                      style={copyBtn}
+                    >
+                      {copied ? "Copied!" : "Copy"}
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+
 
             {generatedPassword && (
               <div style={passwordBox}>
