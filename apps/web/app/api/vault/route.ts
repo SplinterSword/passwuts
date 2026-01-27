@@ -9,15 +9,29 @@ export async function POST(req: NextRequest) {
     const { uid } = await requireAuth(req)
 
     const body = await req.json();
+    const { url } = body
+
+    if (!url) {
+      return NextResponse.json(
+        { error: "Missing site url" },
+        { status: 400 }
+      )
+    }
+
+    const siteId = Buffer.from(url).toString("base64url")
 
     await adminDb
       .collection("users")
       .doc(uid)
       .collection("vault")
-      .add({
-        ...body,
-        createdAt: new Date(),
-      });
+      .doc(siteId)
+      .set(
+        {
+          ...body,
+          updatedAt: new Date(),
+        },
+        { merge: true }
+      )
 
     return NextResponse.json({ success: true });
   } catch (err) {
@@ -39,7 +53,7 @@ export async function GET(req: NextRequest) {
       .collection("users")
       .doc(uid)
       .collection("vault")
-      .orderBy("createdAt", "desc")
+      .orderBy("updatedAt", "desc")
       .get()
 
     const items: VaultItemFromAPI[] = snapshot.docs.map((doc) => {
