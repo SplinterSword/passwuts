@@ -1,6 +1,7 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "baseUrl": ".",
     "target": "ES2017",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
@@ -20,7 +21,8 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@crypto/*": ["../../packages/crypto/src/*"]
     }
   },
   "include": [
@@ -30,6 +32,6 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     "**/*.mts"
-, "../../packages/types/src/vault.ts", "../../packages/crypto/src/crypto.ts"  ],
+  ],
   "exclude": ["node_modules"]
 }
