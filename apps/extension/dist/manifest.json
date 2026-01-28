@@ -1,26 +1,33 @@
 {
-  "manifest_version": 3,
+  "manifest_version": 2,
   "name": "Passwuts",
   "description": "Secure password manager",
   "version": "0.0.1",
 
-  "action": {
+  "browser_action": {
     "default_popup": "popup/index.html"
   },
 
   "background": {
-    "service_worker": "background/index.js",
-    "type": "module"
+    "scripts": ["background/index.js"]
   },
 
-  "permissions": ["storage", "activeTab"],
-  "host_permissions": ["<all_urls>"],
+  "permissions": [
+    "storage",
+    "activeTab",
+    "https://passwuts-web.vercel.app/*"
+  ],
+
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "passwuts@passwuts-web.vercel.app"
+    }
+  },
 
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content/index.js"],
-      "type": "module"
+      "js": ["content/index.js"]
     }
   ]
 }
