@@ -1,7 +1,7 @@
-import type { NextConfig } from "next";
-
+/** @type {import('next').NextConfig} */
 const nextConfig = {
-  transpilePackages: ["@pm/crypto"],
+  output: "standalone",
+  transpilePackages: ["@pm/types", "@pm/crypto"],
 }
 
-export default nextConfig;
+export default nextConfig
