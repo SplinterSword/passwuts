@@ -15,7 +15,7 @@
 
   "permissions": ["storage", "activeTab"],
   "host_permissions": [
-    "https://passwuts.com/*"
+    "https://passwuts-web.vercel.app/*"
   ],
 
   "content_scripts": [
