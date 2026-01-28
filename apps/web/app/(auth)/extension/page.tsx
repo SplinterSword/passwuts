@@ -8,7 +8,6 @@ import auth from "@/lib/Firebase/initialize"
 export default function ExtensionAuthPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const APP_ORIGIN = new URL(__APP_URL__).origin
 
   const login = async () => {
     try {
@@ -20,7 +19,7 @@ export default function ExtensionAuthPage() {
 
       window.opener?.postMessage(
         { type: "EXTENSION_AUTH_SUCCESS", token },
-        APP_ORIGIN
+        "*"
       )
 
       setTimeout(() => {
