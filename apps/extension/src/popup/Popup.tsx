@@ -49,13 +49,6 @@ export default function Popup() {
     email?: string
   }>({})
 
-  useEffect(() => {
-    console.log("[Passwuts Extension]");
-    console.log("ENV MODE:", import.meta.env.MODE);
-    console.log("APP URL:", __APP_URL__);
-  }, []);
-
-
   // Load auth state
   useEffect(() => {
     browser.storage.local.get("idToken").then(({ idToken }) => {
@@ -71,7 +64,7 @@ export default function Popup() {
   useEffect(() => {
     const handler = async (event: MessageEvent) => {
       if (
-        event.origin === __APP_URL__ &&
+        event.origin === new URL(__APP_URL__).origin &&
         event.data?.type === "EXTENSION_AUTH_SUCCESS" &&
         event.data.token
       ) {
