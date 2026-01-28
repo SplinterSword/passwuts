@@ -12,14 +12,7 @@ const provider = new GoogleAuthProvider();
 
 export default function LoginPage() {
   const router = useRouter();
-  const { user, loading } = useAuthStore();
-
-  // Redirect if already logged in
-  useEffect(() => {
-    if (!loading && user) {
-      router.push('/accounts');
-    }
-  }, [loading, user, router]);
+  const setUser = useAuthStore((s : any) => s.setUser)
 
   const handleGoogleLogin = async () => {
     try {
@@ -37,6 +30,9 @@ export default function LoginPage() {
           throw new Error('Failed to generate cookies');
         }
 
+        fetch('/api/me')
+          .then(res => (res.ok ? res.json() : null))
+          .then(data => setUser(data?.user ?? null))
 
         console.log("redirecting to accounts page")
         router.push('/accounts');

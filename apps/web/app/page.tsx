@@ -1,12 +1,6 @@
-"use client"
-
+// app/page.tsx
 import { redirect } from "next/navigation"
-import { useEffect } from "react"
 
 export default function HomePage() {
-  useEffect(() => {
-    redirect("/login")
-  }, [])
-
-  return null
+  redirect("/accounts")
 }
