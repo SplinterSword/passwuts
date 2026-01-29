@@ -12,6 +12,43 @@ Passwuts is a modern, client-first password generator and vault built with Next.
 - **Shadcn/UI + Tailwind CSS v4** for a clean, responsive UI.
 - **Analytics (optional)** via `@vercel/analytics`.
 
+## Problem it solves
+- **Rampant password reuse**: Many people reuse the same or weak passwords across sites, dramatically increasing breach impact when one site is compromised.
+- **Limited built-in generators**: The built-in Chrome password generator is Chrome-only. Users on Firefox and other browsers lack a consistent, portable way to generate and manage strong passwords.
+- **Cross-browser, third‑party solution**: Passwuts provides a browser-agnostic manager with client-side encryption and a companion web app. The extension works across major browsers, so everyone can create and use secure passwords regardless of their browser.
+
+## How I built it
+- **Architecture & monorepo**
+  - Chose a pnpm workspace to host a Next.js web app (apps/web), a Vite browser extension (apps/extension), and shared packages (packages/crypto).
+  - Shared crypto logic lives in an internal package `@pm/crypto` to keep the encryption API consistent across web and extension.
+
+- **Security model first**
+  - Implemented client-side encryption with Web Crypto: PBKDF2 (SHA-256, 100k iterations) derives a 256-bit AES-GCM key from a master password and per-user salt.
+  - Designed a vault verifier stored in Firestore (`vaultMeta`) so the client can confirm the correct key without revealing it.
+  - Server only stores ciphertext + IV; plaintext and keys never leave the client.
+
+- **Authentication & sessions**
+  - Frontend authenticates with Firebase client SDK and obtains a short-lived ID token.
+  - `/api/auth/login` exchanges that ID token for a long-lived, httpOnly, secure session cookie via Firebase Admin SDK.
+  - API routes verify the session cookie on each request to guard Firestore access by user UID.
+
+- **Web app UX**
+  - Used shadcn/ui, Radix, and Tailwind v4 for accessible, responsive components.
+  - Implemented guards: an `AuthProvider` to hydrate user state from `/api/me`, a layout guard for auth, and a `VaultGate` to ensure the vault is initialized/unlocked before accessing pages.
+  - Added quality-of-life features: favorites, copy-to-clipboard with inline feedback, and masked/unmasked passwords.
+
+- **API design & data model**
+  - Firestore layout: `users/{uid}/vault` for items, `users/{uid}/vaultMeta/main` for the verifier.
+  - RESTful endpoints for listing/creating items, setup, existence checks, and toggling favorites.
+
+- **Browser extension**
+  - Built with Vite into three entries (popup, background, content) and selected the proper manifest per target (`BROWSER=chrome|firefox`).
+  - Reused the same Firebase client setup and `@pm/crypto` primitives for consistent auth and encryption behavior.
+
+- **Tooling & DX**
+  - TypeScript across the codebase, strict configs, and path aliases.
+  - pnpm filters for targeted builds/dev flows; Vercel for deploying the web app.
+
 ## Tech Stack
 - **Framework**: Next.js 16 App Router, React 19, TypeScript
 - **UI**: Tailwind CSS v4, shadcn/ui, Radix UI, lucide-react icons
