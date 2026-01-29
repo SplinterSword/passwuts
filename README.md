@@ -166,6 +166,7 @@ This is a pnpm workspace.
 - `GET /api/vault` – list encrypted items for current user
 - `POST /api/vault` – add a new encrypted item (expects fields including `encryptedPassword`, `iv`, metadata)
 - `POST /api/vault/setup` – save vault verifier on first-time setup
+- `GET /api/vault/meta/exists` – returns whether the user's vault has been initialized
 - `PATCH /api/vault/:id/favorite` – toggle favorite (see client code)
 
 All `/api/vault*` routes require a valid `session` cookie. See `lib/verify-admin-token.ts` and `lib/firebaseAdmin.ts`.
@@ -224,5 +225,6 @@ const plain = await decryptPassword(encryptedPassword, iv, key);
 - Ciphertext and IV are Base64 strings for transport/storage convenience.
 
 ## Deployment
-- Build the web app with `pnpm --filter web build` and deploy to your host (e.g., Vercel). Set the environment variables in your hosting platform.
-- Build the extension as described above and load/publish per the target browser store’s guidelines.
+- The Next.js web app is deployed using Vercel. Ensure project environment variables are configured in Vercel, then build with `pnpm --filter web build` (Vercel will build automatically on deploy).
+- The browser extension will be deployed/published later. For now, build as described above and load it as an unpacked/temporary add-on during development.
+ - Ensure your hosting uses HTTPS so the secure, httpOnly session cookie is honored by browsers.
