@@ -115,7 +115,7 @@ dist/                   -> build output (load as unpacked extension)
 
 ## Security Model
 - The encryption key is derived from the user's master password using PBKDF2 with a per-user salt. The key never leaves the browser.
-- Passwords are encrypted with `AES-GCM` before being sent to the server. The server only stores ciphertext and IV in Firestore.
+- Passwords are encrypted with `AES-GCM` and a randomly generated IV before being sent to the server. The server only stores ciphertext and IV in Firestore.
 - A vault “verifier” (encrypted check value + IV) is stored in `vaultMeta` to confirm the correct key on unlock without revealing the key or password.
 - API routes require a valid Firebase session cookie; the cookie is httpOnly, secure, same-site strict.
 
