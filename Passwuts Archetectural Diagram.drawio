@@ -145,8 +145,41 @@
         <mxCell id="p3o1pWQ_IrleEGbGqp7J-37" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Key is stored in zustand state manager" vertex="1">
           <mxGeometry height="60" width="120" x="720" y="570" as="geometry" />
         </mxCell>
+        <mxCell id="JNHiiVp60tNlzhWjNML5-2" edge="1" parent="1" source="p3o1pWQ_IrleEGbGqp7J-40" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="JNHiiVp60tNlzhWjNML5-1" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="JNHiiVp60tNlzhWjNML5-3" connectable="0" parent="JNHiiVp60tNlzhWjNML5-2" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="Hits Post /api/vault to save password to database&amp;nbsp;" vertex="1">
+          <mxGeometry relative="1" x="-0.2633" y="-2" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
         <mxCell id="p3o1pWQ_IrleEGbGqp7J-40" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Encrypts password using key, plainText and randomly generated IV" vertex="1">
           <mxGeometry height="80" width="120" x="240" y="450" as="geometry" />
+        </mxCell>
+        <mxCell id="JNHiiVp60tNlzhWjNML5-5" edge="1" parent="1" source="JNHiiVp60tNlzhWjNML5-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="JNHiiVp60tNlzhWjNML5-4" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="JNHiiVp60tNlzhWjNML5-6" connectable="0" parent="JNHiiVp60tNlzhWjNML5-5" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="NO" vertex="1">
+          <mxGeometry relative="1" x="-0.112" y="2" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="JNHiiVp60tNlzhWjNML5-8" edge="1" parent="1" source="JNHiiVp60tNlzhWjNML5-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="JNHiiVp60tNlzhWjNML5-7" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="JNHiiVp60tNlzhWjNML5-9" connectable="0" parent="JNHiiVp60tNlzhWjNML5-8" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="Yes" vertex="1">
+          <mxGeometry relative="1" x="0.1788" y="-1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="JNHiiVp60tNlzhWjNML5-1" parent="1" style="whiteSpace=wrap;html=1;rounded=0;" value="Check if user is logged in using middleware" vertex="1">
+          <mxGeometry height="60" width="110" x="240" y="620" as="geometry" />
+        </mxCell>
+        <mxCell id="JNHiiVp60tNlzhWjNML5-4" parent="1" style="whiteSpace=wrap;html=1;rounded=0;" value="Error" vertex="1">
+          <mxGeometry height="60" width="120" x="425" y="620" as="geometry" />
+        </mxCell>
+        <mxCell id="JNHiiVp60tNlzhWjNML5-7" parent="1" style="whiteSpace=wrap;html=1;rounded=0;" value="Encrypted Password is stored in the database with its IV&amp;nbsp;" vertex="1">
+          <mxGeometry height="60" width="120" x="235" y="760" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
