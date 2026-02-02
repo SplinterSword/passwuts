@@ -259,7 +259,10 @@ const plain = await decryptPassword(encryptedPassword, iv, key);
 - The Next.js web app is deployed using Vercel. Ensure project environment variables are configured in Vercel, then build with `pnpm --filter web build` (Vercel will build automatically on deploy).
 - The browser extension will be deployed/published later. For now, build as described above and load it as an unpacked/temporary add-on during development.
 
-## Video
+## Video Explanation
+[Youtube Link](https://youtu.be/G1m7K7ZG1M0)
+
+## Video Demo
 https://github.com/user-attachments/assets/1cc351fa-696f-4e55-ab0d-6815a423ffb8
 
 
