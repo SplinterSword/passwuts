@@ -13,6 +13,13 @@ const provider = new GoogleAuthProvider();
 export default function LoginPage() {
   const router = useRouter();
   const setUser = useAuthStore((s : any) => s.setUser)
+  const user = useAuthStore((s : any) => s.user)
+
+  useEffect(() => {
+    if (user) {
+      router.push('/accounts')
+    }
+  }, [user])
 
   const handleGoogleLogin = async () => {
     try {
