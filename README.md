@@ -2,8 +2,7 @@
 
 Generate strong passwords anywhere, keep them zero-knowledge everywhere — web vault + browser extension, your key never leaves your device.
 
-![Passwuts demo](https://github.com/user-attachments/assets/1cc351fa-696f-4e55-ab0d-6815a423ffb8)
-<!-- Video demo above. Full explanation: https://youtu.be/G1m7K7ZG1M0 -->
+https://github.com/user-attachments/assets/992c21ee-1d23-4197-8a43-b76d71020970
 
 ## Video Explanation
 [Youtube Link](https://youtu.be/G1m7K7ZG1M0)
