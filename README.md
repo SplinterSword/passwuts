@@ -1,269 +1,209 @@
-# Passwuts – Password Manager (Web + Browser Extension)
+# Passwuts
 
-Passwuts is a modern, client-first password generator and vault built with Next.js App Router. It uses Firebase Authentication and Firestore with a secure, user-held encryption model: passwords are encrypted/decrypted in the browser using a key derived from the user's master password. The server never sees the plaintext passwords or the user's encryption key.
+Generate strong passwords anywhere, keep them zero-knowledge everywhere — web vault + browser extension, your key never leaves your device.
 
-## Features
-- **Client-side encryption** using Web Crypto (`AES-GCM`) and PBKDF2 key derivation.
-- **Password vault** per user stored in Firestore (`users/{uid}/vault`).
-- **Master password verifier** stored server-side (`users/{uid}/vaultMeta/main`) to prevent master password reset attacks.
-- **Favorites** and quick actions (copy username/password, toggle visibility, open URL).
-- **Session-cookie auth** for API routes using Firebase Admin SDK.
-- **Route protection** for app pages (client guard + middleware-style proxy).
-- **Shadcn/UI + Tailwind CSS v4** for a clean, responsive UI.
-- **Analytics (optional)** via `@vercel/analytics`.
-
-## Problem it solves
-- **Rampant password reuse**: Many people reuse the same or weak passwords across sites, dramatically increasing breach impact when one site is compromised.
-- **Limited built-in generators**: The built-in Chrome password generator is Chrome-only. Users on Firefox and other browsers lack a consistent, portable way to generate and manage strong passwords.
-- **Cross-browser, third‑party solution**: Passwuts provides a browser-agnostic manager with client-side encryption and a companion web app. The extension works across major browsers, so everyone can create and use secure passwords regardless of their browser.
-
-## How I built it
-- **Architecture & monorepo**
-  - Chose a pnpm workspace to host a Next.js web app (apps/web), a Vite browser extension (apps/extension), and shared packages (packages/crypto).
-  - Shared crypto logic lives in an internal package `@pm/crypto` to keep the encryption API consistent across web and extension.
-
-- **Security model first**
-  - Implemented client-side encryption with Web Crypto: PBKDF2 (SHA-256, 100k iterations) derives a 256-bit AES-GCM key from a master password and per-user salt.
-  - Designed a vault verifier stored in Firestore (`vaultMeta`) so the client can confirm the correct key without revealing it.
-  - Server only stores ciphertext + IV; plaintext and keys never leave the client.
-
-- **Authentication & sessions**
-  - Frontend authenticates with Firebase client SDK and obtains a short-lived ID token.
-  - `/api/auth/login` exchanges that ID token for a long-lived, httpOnly, secure session cookie via Firebase Admin SDK.
-  - API routes verify the session cookie on each request to guard Firestore access by user UID.
-
-- **Web app UX**
-  - Used shadcn/ui, Radix, and Tailwind v4 for accessible, responsive components.
-  - Implemented guards: an `AuthProvider` to hydrate user state from `/api/me`, a layout guard for auth, and a `VaultGate` to ensure the vault is initialized/unlocked before accessing pages.
-  - Added quality-of-life features: favorites, copy-to-clipboard with inline feedback, and masked/unmasked passwords.
-
-- **API design & data model**
-  - Firestore layout: `users/{uid}/vault` for items, `users/{uid}/vaultMeta/main` for the verifier.
-  - RESTful endpoints for listing/creating items, setup, existence checks, and toggling favorites.
-
-- **Browser extension**
-  - Built with Vite into three entries (popup, background, content) and selected the proper manifest per target (`BROWSER=chrome|firefox`).
-  - Reused the same Firebase client setup and `@pm/crypto` primitives for consistent auth and encryption behavior.
-
-- **Tooling & DX**
-  - TypeScript across the codebase, strict configs, and path aliases.
-  - pnpm filters for targeted builds/dev flows; Vercel for deploying the web app.
-
-## Tech Stack
-- **Framework**: Next.js 16 App Router, React 19, TypeScript
-- **UI**: Tailwind CSS v4, shadcn/ui, Radix UI, lucide-react icons
-- **State**: Zustand
-- **Auth/DB**: Firebase (client SDK) + Firebase Admin (server) + Firestore
-- **Validation**: zod, react-hook-form
-
-## Monorepo Structure
-This is a pnpm workspace with a web app and a browser extension.
-
-```
-apps/
-  web/                  -> Next.js app (primary web UI)
-  extension/            -> Browser extension (Chrome/Firefox) built with Vite
-packages/
-  crypto/               -> Shared crypto utilities (internal: @pm/crypto)
-  types/                -> Shared types
-```
-
-### apps/web (Next.js)
-```
-app/
-  page.tsx              -> redirects to /login
-  layout.tsx            -> global layout, loads AuthProvider
-  (app)/
-    layout.tsx          -> authenticated layout + VaultGate
-    accounts/page.tsx   -> accounts grid UI
-  api/
-    auth/login/route.ts -> creates long-lived session cookie from Firebase ID token
-    auth/logout/route.ts-> revokes session and clears cookie
-    me/route.ts         -> returns current user from session cookie
-    vault/route.ts      -> GET (list), POST (add) encrypted vault items
-    vault/setup/route.ts-> stores initial vault verifier metadata
-    vault/meta/exists   -> checks if vault exists for user
-    vault/[id]/favorite -> PATCH favorite state (see client usage)
-components/
-  AuthProvider.tsx      -> loads user from /api/me into Zustand
-  ClientGuard.tsx       -> client-side guard (used by pages)
-  VaultGate.tsx         -> ensures vault is initialized/unlocked
-  header.tsx, password-generator-modal.tsx, vault-setup-modal.tsx, vault-unlock-modal.tsx ui/*
-lib/
-  Firebase/initialize.ts-> Firebase client SDK init (NEXT_PUBLIC_* envs)
-  firebaseAdmin.ts      -> Admin SDK init (service account envs)
-  verify-admin-token.ts -> session cookie verification helper
-  crypto.ts             -> deriveKey, encryptPassword, decryptPassword
-store/
-  authStore.ts, vaultStore.ts
-proxy.ts                -> middleware-like guard for /accounts (matcher config)
-```
-
-### apps/extension (Vite)
-```
-public/
-  manifest.chrome.json  -> MV3 manifest for Chromium
-  manifest.firefox.json -> Manifest for Firefox (background as scripts)
-src/
-  background/index.ts   -> background script entry
-  content/index.ts      -> content script entry
-  popup/*               -> popup UI
-shared/firebase.ts      -> Firebase client init (VITE_* envs)
-vite.config.ts          -> builds popup, background, content; copies manifest
-dist/                   -> build output (load as unpacked extension)
-```
-
-## Security Model
-- The encryption key is derived from the user's master password using PBKDF2 with a per-user salt. The key never leaves the browser.
-- Passwords are encrypted with `AES-GCM` and a randomly generated IV before being sent to the server. The server only stores ciphertext and IV in Firestore.
-- A vault “verifier” (encrypted check value + IV) is stored in `vaultMeta` to confirm the correct key on unlock without revealing the key or password.
-- API routes require a valid Firebase session cookie; the cookie is httpOnly, secure, same-site strict.
-
-## Prerequisites
-- Node.js 18+ (recommended 20+)
-- A Firebase project with:
-  - Web App credentials (client SDK) for the frontend
-  - Service Account credentials (Admin SDK) for server-side session verification and Firestore access
-  - Firestore enabled (in Native mode)
-
-## Environment Variables
-
-### Web app (apps/web)
-Create `apps/web/.env.local` with the following keys.
-
-Client (exposed):
-```
-NEXT_PUBLIC_FIREBASE_API_KEY=
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
-NEXT_PUBLIC_FIREBASE_APP_ID=
-NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=
-```
-
-Server (Admin SDK):
-```
-FIREBASE_PROJECT_ID=
-FIREBASE_CLIENT_EMAIL=
-# Note: Make sure to escape newlines with \n if pasting JSON key material
-FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
-```
-
-Notes:
-- These values populate `apps/web/lib/Firebase/initialize.ts` (client SDK) and `apps/web/lib/firebaseAdmin.ts` (Admin SDK).
-- If deploying on a platform like Vercel, set these as project environment variables for the web app.
-
-### Browser extension (apps/extension)
-Create `apps/extension/.env` with the following keys (Vite format):
-
-```
-VITE_APP_URL=YOUR_WEB_APP_URL
-```
-
-## Getting Started (Local Dev)
-This is a pnpm workspace.
-
-1. Install dependencies:
-   ```bash
-   pnpm install
-   ```
-2. Configure env files for the web app and optionally the extension as shown above.
-3. Run the web app dev server:
-   ```bash
-   pnpm --filter web dev
-   ```
-4. Open http://localhost:3000. You’ll be redirected to `/login`; on success the client posts the ID token to `/api/auth/login` which issues a long-lived session cookie.
-5. Navigate to `/accounts` to view and manage entries once the vault is initialized/unlocked.
-
-## Common Scripts
-- `pnpm --filter web dev` – start Next.js dev server
-- `pnpm --filter web build` – build the web app for production
-- `pnpm --filter @pm/extension dev` – run Vite dev for the extension
-- `pnpm --filter @pm/extension build` – build the extension into `apps/extension/dist`
-
-## Firebase Setup Tips
-- Enable Email/Password or your chosen providers in Firebase Authentication.
-- Create a Web App in the Firebase console and copy the config into the NEXT_PUBLIC_* variables.
-- Create a Service Account key (JSON) for the Admin SDK; use its fields for `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`.
-- Ensure Firestore is enabled. Collections used:
-  - `users/{uid}/vault` for encrypted entries
-  - `users/{uid}/vaultMeta/main` for the verifier document
-
-## API Overview
-- `POST /api/auth/login` – body `{ idToken }`; verifies token and sets `session` cookie
-- `POST /api/auth/logout` – revokes tokens, clears `session` cookie
-- `GET /api/me` – returns `{ user }` from verified session
-- `GET /api/vault` – list encrypted items for current user
-- `POST /api/vault` – add a new encrypted item (expects fields including `encryptedPassword`, `iv`, metadata)
-- `POST /api/vault/setup` – save vault verifier on first-time setup
-- `GET /api/vault/meta/exists` – returns whether the user's vault has been initialized
-- `PATCH /api/vault/:id/favorite` – toggle favorite (see client code)
-
-All `/api/vault*` routes require a valid `session` cookie. See `lib/verify-admin-token.ts` and `lib/firebaseAdmin.ts`.
-
-## UI/UX Notes
-- Password visibility toggling and clipboard copy with inline feedback
-- Favorites sorting keeps starred items on top
-- Responsive grid and modern design via shadcn/ui + Tailwind v4
-
-## Browser Extension
-- The extension is in `apps/extension` and builds three entries: popup, background, and content scripts. `vite.config.ts` emits files into predictable folders (popup/, background/, content/).
-- The manifest is selected based on `BROWSER` env when building:
-  - `BROWSER=chrome pnpm --filter @pm/extension build` → copies `public/manifest.chrome.json` to `dist/manifest.json`
-  - `BROWSER=firefox pnpm --filter @pm/extension build` → copies `public/manifest.firefox.json` to `dist/manifest.json`
-
-### Load in Chrome (Developer Mode)
-1. Build: `BROWSER=chrome pnpm --filter @pm/extension build`
-2. Open chrome://extensions, enable Developer mode
-3. Click “Load unpacked” and select `apps/extension/dist`
-
-### Load in Firefox (about:debugging)
-1. Build: `BROWSER=firefox pnpm --filter @pm/extension build`
-2. Open about:debugging#/runtime/this-firefox
-3. Click “Load Temporary Add-on…” and select `apps/extension/dist/manifest.json`
-
-### Dev mode
-- You can run `pnpm --filter @pm/extension dev` to iterate; for full extension testing you’ll typically build and load the `dist` output.
-
-## Internal package: @pm/crypto
-Shared crypto utilities used by both web and extension. Uses the Web Crypto SubtleCrypto API.
-
-### API
-- `async deriveKey(masterPassword: string, salt: string): Promise<CryptoKey>`
-  - Derives an AES-GCM 256-bit key using PBKDF2 with SHA-256 and 100,000 iterations.
-  - Returns a `CryptoKey` with usages `encrypt` and `decrypt`.
-
-- `async encryptPassword(password: string, key: CryptoKey): Promise<{ encryptedPassword: string; iv: string }>`
-  - Encrypts the UTF-8 `password` with `AES-GCM` using a random 12-byte IV.
-  - Returns Base64 strings: `encryptedPassword` and `iv`.
-
-- `async decryptPassword(encryptedPassword: string, iv: string, key: CryptoKey): Promise<string>`
-  - Decrypts Base64-encoded ciphertext with `AES-GCM` and the provided IV.
-  - Throws if authentication fails (wrong key/iv or corrupted data).
-
-### Usage example
-```ts
-import { deriveKey, encryptPassword, decryptPassword } from "@pm/crypto";
-
-const key = await deriveKey(masterPassword, userSalt);
-const { encryptedPassword, iv } = await encryptPassword("s3cret", key);
-const plain = await decryptPassword(encryptedPassword, iv, key);
-```
-
-### Notes
-- Web Crypto is available in modern browsers and recent Node runtimes. For Node, ensure a compatible version (v18+ recommended) and a Web Crypto global is available.
-- Ciphertext and IV are Base64 strings for transport/storage convenience.
-
-## Deployment
-- The Next.js web app is deployed using Vercel. Ensure project environment variables are configured in Vercel, then build with `pnpm --filter web build` (Vercel will build automatically on deploy).
-- The browser extension will be deployed/published later. For now, build as described above and load it as an unpacked/temporary add-on during development.
+![Passwuts demo](https://github.com/user-attachments/assets/1cc351fa-696f-4e55-ab0d-6815a423ffb8)
+<!-- Video demo above. Full explanation: https://youtu.be/G1m7K7ZG1M0 -->
 
 ## Video Explanation
 [Youtube Link](https://youtu.be/G1m7K7ZG1M0)
 
-## Video Demo
-https://github.com/user-attachments/assets/1cc351fa-696f-4e55-ab0d-6815a423ffb8
+## What is this?
 
+You know that feeling? You reuse the same 2 passwords everywhere, Chrome offers a generator but Firefox doesn't, and every new device means lost logins or a plaintext notes file. Passwuts fixes that.
 
+Passwuts is three small pieces that work together:
 
+1. **A Next.js app** (`apps/web`) — vault UI, generator, Firebase session-cookie auth, Firestore-backed API.
+2. **A Vite extension** (`apps/extension`) — popup / background / content, one build for Chrome and Firefox.
+3. **Shared crypto + Firebase** — `@pm/crypto` (PBKDF2 + AES-GCM) and Firestore (`users/{uid}/vault`, `users/{uid}/vaultMeta/main`).
+
+The trick is simple: set one master password and Passwuts derives a 256-bit key in your browser (PBKDF2-SHA256, 100k iterations). Every password is encrypted with AES-GCM + random 12-byte IV before it hits the server. Then unlocking on any device is just re-derive + decrypt the verifier. So the server only ever sees ciphertext + IV, for every login you save.
+
+         Think 1Password, but you hold the key.
+
+## Motivation
+
+Password reuse is still the breach multiplier — one leak compromises everything — `grep`-ing a notes file finds text, not security, and built-in generators don't travel across browsers, so people fall back to weak, repeated passwords.
+
+- Shared primitives: one `@pm/crypto` package, same encrypt/decrypt on web and extension.
+- Faster logins: generate → save once in `/accounts`, reuse from the popup instead of remembering 50 passwords.
+- Stay in flow: favorites on top, copy username/password, toggle visibility, open URL without tab-hopping.
+
+## Quick Start
+
+First visit this link: [https://passwuts-web.vercel.app/](https://passwuts-web.vercel.app/)
+
+No install needed — just a browser and a Firebase login. For local dev, have a Firebase project ready.
+
+### 1. Sign in
+
+Open the live link above → Sign up / Sign in → you'll land on `/login` then `/accounts`. The client posts the Firebase ID token to `/api/auth/login`, which sets an `httpOnly Secure SameSite=Strict` session cookie.
+
+### 2. Set up your vault
+
+- First visit triggers `vault-setup-modal.tsx` → pick a master password
+- Passwuts derives your key + stores an encrypted verifier at `users/{uid}/vaultMeta/main` (`POST /api/vault/setup`)
+- Returning visits trigger `vault-unlock-modal.tsx` → same master password re-derives the key locally
+
+### 3. Save and reuse logins
+
+- Stay on `/accounts` → open the generator (`password-generator-modal.tsx`) → save site + username + encrypted password (`POST /api/vault`)
+- Star what you use daily → `PATCH /api/vault/:id/favorite` keeps it on top
+- Copy / reveal / open URL inline, delete via `DELETE /api/vault/:id/delete`
+
+### 4. Extension, team model, and keys
+
+- `apps/extension` — popup for lookup, content script for pages, background for session; same `@pm/crypto` decrypt path
+- No sharing / orgs yet — one Firebase user = one vault (`GET /api/vault` is UID-scoped)
+- No key recovery — if you lose the master password the ciphertext can't be decrypted
+
+See `## Usage` below for the daily loop. Want to run it locally instead? See `## Contributing`.
+
+## Usage
+
+Available pages (auth required via `proxy.ts` + `AuthProvider` + `VaultGate`):
+
+- `/login` — Firebase client sign-in, exchanges ID token for session cookie
+- `/accounts` — vault grid UI, generator modal, setup/unlock gates, favorites sorted first
+- `/extension` — helper page under `(auth)/extension` for extension handoff
+- `/api/auth/login` — body `{ idToken }` → sets `session` cookie
+- `/api/auth/logout` — revokes tokens, clears cookie
+- `/api/me` — returns `{ user }` from verified session
+- `/api/vault` — `GET` list, `POST` add `{ encryptedPassword, iv, ...metadata }`
+- `/api/vault/setup` — saves initial verifier
+- `/api/vault/meta/exists` — has this user initialized a vault?
+- `/api/vault/[id]/favorite` — `PATCH` favorite state
+- `/api/vault/[id]/delete` — `DELETE` entry
+
+Behavior notes:
+
+- Zero-knowledge by construction — `deriveKey` / `encryptPassword` / `decryptPassword` run in WebCrypto, key is non-extractable, never sent.
+- Verifier model — wrong master password fails AES-GCM auth on decrypt, no plaintext oracle.
+- All `/api/vault*` routes verify the session cookie per-request (`lib/verify-admin-token.ts` + `lib/firebaseAdmin.ts`).
+- Extension upload/build goes via Vite `dist/`, load unpacked — no store publish yet.
+
+> [!NOTE]
+> **Master password = encryption key.** There is no reset flow by design. Lose it and vault items are unrecoverable.
+
+## Examples
+
+Generate and save a login:
+
+```text
+/accounts > New > "github.com" + username + Generate(20, symbols)
+-> AES-GCM encrypt in browser -> POST /api/vault { encryptedPassword, iv }
+-> appears in grid, star to pin to top
+```
+
+Unlock on a new device:
+
+```text
+/login > sign in with Firebase > Vault locked
+-> enter master password -> deriveKey(password, uid-salt) -> decrypt verifier
+-> GET /api/vault -> decrypt rows locally for copy/reveal
+```
+
+Use the extension:
+
+```text
+Build: BROWSER=chrome pnpm --filter @pm/extension build:prod
+Chrome: chrome://extensions > Load unpacked > apps/extension/dist
+Firefox: about:debugging > Load Temporary Add-on > dist/manifest.json
+```
+
+## What's in the repo?
+
+```
+pnpm-workspace.yaml        -> apps/web, apps/extension, packages/*
+Passwuts.drawio / Passwuts Archetectural Diagram.drawio -> architecture diagrams
+Technical_Documentation.md  -> architecture, security model, API, decisions
+packages/
+  crypto/src/index.ts       -> deriveKey, encryptPassword, decryptPassword (@pm/crypto)
+  types/                    -> shared types (@pm/types)
+apps/web/
+  app/page.tsx              -> redirects to /login
+  app/layout.tsx            -> global layout + AuthProvider
+  app/(app)/layout.tsx       -> authed layout + VaultGate
+  app/(app)/accounts/        -> vault grid UI
+  app/(auth)/login/ + extension/ -> sign-in, extension helper
+  app/api/auth/login|logout/ -> session cookie issue / revoke
+  app/api/me/               -> current user from session
+  app/api/vault/route.ts    -> GET list, POST add
+  app/api/vault/setup/      -> initial verifier save
+  app/api/vault/meta/exists/-> vault initialized check
+  app/api/vault/[id]/favorite|delete/ -> star, remove
+  components/               -> AuthProvider, ClientGuard, VaultGate, header, password-generator-modal, vault-setup-modal, vault-unlock-modal, ui/*
+  lib/                      -> Firebase/initialize.ts, firebaseAdmin.ts, verify-admin-token.ts, firestore.ts, vault.ts
+  store/                    -> authStore.ts, vaultStore.ts (zustand)
+  proxy.ts                  -> guards /accounts/* -> /login when no session
+apps/extension/
+  public/manifest.chrome.json / manifest.firefox.json -> MV3 / Firefox manifests
+  src/popup/*               -> popup UI
+  src/background/ + src/content/ -> background + content entries
+  shared/firebase.ts        -> Firebase client init (VITE_* envs)
+  vite.config.ts            -> popup/background/content build + manifest copy
+  dist/                     -> build output (load as unpacked extension)
+```
+
+## For more technical info
+
+Skipping the deep dive here on purpose. For security model, Firestore layout, session flow, extension builds, challenges, and deployment — checkout `Technical_Documentation.md` and the `.drawio` diagrams.
+
+## Contributing
+
+### Clone the repo
+
+```bash
+git clone https://github.com/SplinterSword/passwuts.git
+cd passwuts
+```
+
+### Local dev
+
+Prereqs: Node.js 18+ (20+ recommended), pnpm 10+, a Firebase project with Auth + Firestore Native mode enabled.
+
+```bash
+pnpm install
+# create apps/web/.env.local (see below)
+# create apps/extension/.env (see below)
+pnpm --filter web dev
+```
+
+Condensed env — full table lives in `Technical_Documentation.md`:
+
+```bash
+# apps/web/.env.local
+NEXT_PUBLIC_FIREBASE_API_KEY= / NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=
+NEXT_PUBLIC_FIREBASE_PROJECT_ID= / NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID= / NEXT_PUBLIC_FIREBASE_APP_ID=
+NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=
+FIREBASE_PROJECT_ID= / FIREBASE_CLIENT_EMAIL=
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+
+# apps/extension/.env
+VITE_APP_URL=http://localhost:3000
+```
+
+Starts Next.js on `http://localhost:3000`. Sign in, set a master password on a test account first — vault ciphertext is per-user.
+
+Point the extension at local: build with `VITE_APP_URL=http://localhost:3000`, then:
+
+```bash
+BROWSER=chrome pnpm --filter @pm/extension build:prod  # -> apps/extension/dist/manifest.json
+BROWSER=firefox pnpm --filter @pm/extension build:prod # -> firefox manifest variant
+```
+
+Load in Chrome via `chrome://extensions` → Load unpacked → `apps/extension/dist`. Load in Firefox via `about:debugging` → Load Temporary Add-on → `dist/manifest.json`.
+
+### Run checks
+
+```bash
+pnpm --filter web lint    # eslint
+pnpm --filter web build   # production build
+pnpm --filter @pm/extension build:prod # extension bundle check
+```
+
+### Submit a pull request
+
+Fork the repo and open a PR to `main`. Keep it scoped — one feature / fix per PR.
